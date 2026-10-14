@@ -1,0 +1,272 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OPS_ANALYST
+  OPS_LEAD
+  FIDUCIARY_EXEC
+  INDEPENDENT_MONITOR
+}
+
+enum ProjectStatus {
+  PENDING_CP
+  ACTIVE
+  STALLED
+  WIND_DOWN
+  COMPLETED
+}
+
+enum GateType {
+  G0_FUNDING_CLOSE
+  G1_PRELIM_PROCUREMENT_01
+  G2_SUBSTRUCTURE
+  G3_SUPERSTRUCTURE
+  G4_ROOF
+  G5_PROCUREMENT_02
+  G6_MEP_FINISHES
+  G7_PROCUREMENT_03
+  G8_MEP_FURNITURE
+  G9_PRACTICAL_COMPLETION
+  G10_INVESTOR_EXIT
+  G11_CLOSEOUT
+}
+
+enum DrawdownStatus {
+  SUBMITTED
+  ACKNOWLEDGED
+  DEFICIENT
+  CERTIFIED_BY_MONITOR
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum AccountType {
+  PROJECT_INVESTMENT_ACCT
+  ASSET_PURCHASE_ACCT
+  PROJECT_EXECUTION_ACCT
+}
+
+enum DocumentType {
+  CERTIFICATE
+  PO
+  INVOICE
+  VENDOR_KYC
+  TITLE_DEED
+  LAND_REGISTRY_LIEN
+  BOQ_SPECIFICATION
+  SNAG_LIST
+  SITE_PHOTO
+  SITE_VIDEO
+  MONITOR_DECLARATION
+  MONITOR_ID
+  PROFESSIONAL_LICENSE
+  PI_INSURANCE
+}
+
+enum KycStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  hashedPassword   String
+  role             Role
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  drawdownRequests DrawdownRequest[] @relation("RequestedBy")
+  deficiencyNotices DeficiencyNotice[] @relation("IssuedBy")
+  certificates     MonitorCertificate[]
+  auditLogs        AuditLog[]        @relation("AuditActor")
+  monitorCredential MonitorCredential? @relation("MonitorCredentialUser")
+  appointedProjects ProjectMonitor[]   @relation("ProjectMonitorMonitor")
+}
+
+model Project {
+  id                  String               @id @default(cuid())
+  name                String
+  code                String               @unique
+  status              ProjectStatus        @default(PENDING_CP)
+  totalBudget         Float
+  fundingCloseDate    DateTime?
+  targetCompletion    DateTime
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  bankAccounts        BankAccount[]
+  conditionPrecedent  ConditionPrecedent?
+  drawdownRequests    DrawdownRequest[]
+  auditLogs           AuditLog[]
+  cashTransactions    CashTransaction[]
+  projectMonitors     ProjectMonitor[]
+}
+
+model ConditionPrecedent {
+  id                          String    @id @default(cuid())
+  projectId                   String    @unique
+  project                     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  masterScheduleExecuted      Boolean   @default(false)
+  landRegistryLienRegistered  Boolean   @default(false)
+  boqApproved                 Boolean   @default(false)
+  minimumFundingMet           Boolean   @default(false)
+  insuranceVerified           Boolean   @default(false)
+  clearedForActivation        Boolean   @default(false)
+  activatedAt                 DateTime?
+  lienVacated                 Boolean   @default(false)
+  lienVacatedAt               DateTime?
+}
+
+model BankAccount {
+  id            String      @id @default(cuid())
+  projectId     String
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type          AccountType
+  accountNumber String      @unique
+  bankName      String
+  balance       Float       @default(0.0)
+  currency      String      @default("NGN")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  cashTransactions CashTransaction[]
+}
+
+model DrawdownRequest {
+  id                   String               @id @default(cuid())
+  projectId            String
+  project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestedById        String
+  requestedBy          User                 @relation("RequestedBy", fields: [requestedById], references: [id])
+  gateType             GateType
+  requestedAmount      Float
+  status               DrawdownStatus       @default(SUBMITTED)
+  estimateAtCompletion Float?
+  submissionDate       DateTime             @default(now())
+  slaDeadline          DateTime
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  deficiencyNotices    DeficiencyNotice[]
+  monitorCertificates  MonitorCertificate[]
+  documents            DocumentVault[]
+
+  @@index([projectId, status])
+}
+
+model DeficiencyNotice {
+  id                  String          @id @default(cuid())
+  drawdownRequestId   String
+  drawdownRequest     DrawdownRequest @relation(fields: [drawdownRequestId], references: [id], onDelete: Cascade)
+  issuedById          String
+  issuedBy            User            @relation("IssuedBy", fields: [issuedById], references: [id])
+  consolidatedMessage String          @db.Text
+  isResolved          Boolean         @default(false)
+  issuedAt            DateTime        @default(now())
+}
+
+model MonitorCertificate {
+  id                       String          @id @default(cuid())
+  drawdownRequestId        String
+  drawdownRequest          DrawdownRequest @relation(fields: [drawdownRequestId], references: [id], onDelete: Cascade)
+  monitorId                String
+  monitor                  User            @relation(fields: [monitorId], references: [id])
+  physicalProgressVerified Boolean
+  varianceFlagged          Boolean         @default(false)
+  notes                    String          @db.Text
+  certifiedAt              DateTime        @default(now())
+}
+
+model DocumentVault {
+  id                String           @id @default(cuid())
+  drawdownRequestId String?
+  drawdownRequest   DrawdownRequest? @relation(fields: [drawdownRequestId], references: [id], onDelete: SetNull)
+  referenceId       String
+  documentType      DocumentType
+  s3Url             String
+  fileName          String
+  uploadedAt        DateTime         @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User     @relation("AuditActor", fields: [actorId], references: [id])
+  actorName   String
+  action      String
+  details     String   @db.Text
+  timestamp   DateTime @default(now())
+}
+
+/// Independent Monitor professional standing (COREN/NIQS/ARCON, PI insurance, experience)
+model MonitorCredential {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation("MonitorCredentialUser", fields: [userId], references: [id], onDelete: Cascade)
+  professionalBody   String /// e.g. COREN, NIQS, ARCON
+  registrationNumber String
+  experienceSummary  String?  @db.Text
+  piInsuranceVerified Boolean @default(false)
+  piInsuranceDocUrl  String?
+  kycStatus           KycStatus @default(PENDING)
+  kycNote             String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+/// Per-project Monitor appointment + signed independence & conflict declaration
+model ProjectMonitor {
+  id                        String   @id @default(cuid())
+  projectId                 String
+  project                   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  monitorId                 String
+  monitor                   User     @relation("ProjectMonitorMonitor", fields: [monitorId], references: [id])
+  appointedById             String
+  eligibilityCriteriaMet    Boolean  @default(false)
+  independenceDeclarationSigned Boolean @default(false)
+  declarationDocUrl         String?
+  appointedAt               DateTime @default(now())
+
+  @@unique([projectId, monitorId])
+}
+
+/// Independent cash ledger: subscriptions, asset-purchase collections, drawdowns, distributions
+model CashTransaction {
+  id               String   @id @default(cuid())
+  projectId        String
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  bankAccountId    String?
+  bankAccount      BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  type             CashTxnType
+  direction        CashTxnDirection
+  amount           Float
+  currency         String   @default("NGN")
+  referenceId      String?
+  note             String?  @db.Text
+  recordedById     String
+  recordedAt       DateTime @default(now())
+}
+
+enum CashTxnType {
+  PROJECT_INVESTMENT_SUBSCRIPTION
+  ASSET_PURCHASE_COLLECTION
+  DRAWDOWN_DISBURSEMENT
+  MONITOR_FEE
+  INVESTOR_DISTRIBUTION
+  STALL_REMEDY_SALE
+}
+
+enum CashTxnDirection {
+  IN
+  OUT
+}

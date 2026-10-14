@@ -1,0 +1,75 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { appointMonitor } from "@/actions/fiduciaryActions";
+import { UserPlus } from "lucide-react";
+
+export function AppointMonitorForm({
+  projectId,
+  monitors,
+}: {
+  projectId: string;
+  monitors: { id: string; name: string; email: string }[];
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [monitorId, setMonitorId] = useState(monitors[0]?.id ?? "");
+  const [eligibility, setEligibility] = useState(true);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      try {
+        await appointMonitor({ projectId, monitorId, eligibilityCriteriaMet: eligibility });
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Appointment failed.");
+      }
+    });
+  }
+
+  if (monitors.length === 0) {
+    return <p className="text-xs text-slate-500">No Independent Monitor users available.</p>;
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div>
+        <label className="text-xs text-slate-500 uppercase tracking-wider">
+          Independent Monitor
+        </label>
+        <select
+          value={monitorId}
+          onChange={(e) => setMonitorId(e.target.value)}
+          className="mt-1 w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+        >
+          {monitors.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name} ({m.email})
+            </option>
+          ))}
+        </select>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={eligibility}
+          onChange={(e) => setEligibility(e.target.checked)}
+          className="accent-sky-500"
+        />
+        Meets Master-level eligibility criteria
+      </label>
+      {error && <p className="text-xs text-rose-600">{error}</p>}
+      <button
+        type="submit"
+        disabled={pending}
+        className="w-full rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2 text-sm disabled:opacity-60"
+      >
+        {pending ? "Appointing…" : "Appoint Monitor (First Trustees)"}
+      </button>
+    </form>
+  );
+}
