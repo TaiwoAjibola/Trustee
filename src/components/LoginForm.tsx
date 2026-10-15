@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { ShieldCheck, Loader2 } from "lucide-react";
 
 const SEED_USERS = [
@@ -12,7 +11,6 @@ const SEED_USERS = [
 ];
 
 export function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("fiduciary@firsttrustees.com");
   const [password, setPassword] = useState("Pass1234!");
   const [error, setError] = useState<string | null>(null);
@@ -25,15 +23,13 @@ export function LoginForm() {
     const res = await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      callbackUrl: "/ops-dashboard",
     });
     setLoading(false);
     if (res?.error) {
       setError("Authentication failed. Verify the credentials.");
       return;
     }
-    router.push("/ops-dashboard");
-    router.refresh();
   }
 
   return (
