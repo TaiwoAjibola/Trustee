@@ -1,11 +1,17 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
+// Demo/prototype: authentication is validated against the in-memory mock users
+// defined in lib/prisma.ts (this is a "dummy data" design showcase, not a real
+// credential store). Passwords are not checked for the MVP seed accounts.
+const DEMO_USERS = [
+  { id: "user_fidu", name: "Adewale Fiduciary Lead", email: "fiduciary@firsttrustees.com", role: Role.FIDUCIARY_EXEC },
+  { id: "user_ops", name: "Chioma Ops Analyst", email: "ops@firsttrustees.com", role: Role.OPS_ANALYST },
+  { id: "user_mon", name: "Engr. Kabir (Independent Monitor)", email: "monitor@tech-cert.org", role: Role.INDEPENDENT_MONITOR },
+];
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
@@ -17,17 +23,11 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email) return null;
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!user || !user.isActive) return null;
-        // Simplified password match for MVP seed authentication
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
+        const user = DEMO_USERS.find(
+          (u) => u.email.toLowerCase() === credentials.email.toLowerCase(),
+        );
+        if (!user) return null;
+        return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),
   ],
