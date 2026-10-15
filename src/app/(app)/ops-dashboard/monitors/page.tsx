@@ -6,7 +6,6 @@ import { authOptions } from "@/lib/auth";
 import { Role, DocumentType } from "@prisma/client";
 import { BadgeCheck, IdCard, ShieldCheck, ArrowLeft } from "lucide-react";
 
-export const instant = false;
 
 export default async function MonitorsDirectoryPage() {
   const session = await getServerSession(authOptions);

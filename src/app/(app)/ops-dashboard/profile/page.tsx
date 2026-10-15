@@ -10,7 +10,6 @@ import {
   BadgeCheck,
 } from "lucide-react";
 
-export const instant = false;
 
 type Capability = { label: string; ok: boolean };
 

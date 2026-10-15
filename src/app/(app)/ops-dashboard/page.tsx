@@ -11,7 +11,6 @@ import { authOptions } from "@/lib/auth";
 import { Role, DrawdownStatus } from "@prisma/client";
 import { formatNaira } from "@/lib/utils";
 
-export const instant = false;
 
 export default async function OpsDashboardPage() {
   const session = await getServerSession(authOptions);

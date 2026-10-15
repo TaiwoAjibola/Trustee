@@ -8,7 +8,6 @@ import { authOptions } from "@/lib/auth";
 import { DocumentType } from "@prisma/client";
 import { BadgeCheck, FileText, IdCard, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 
-export const instant = false;
 
 const DOC_META: { type: DocumentType; label: string; icon: typeof FileText }[] = [
   { type: DocumentType.MONITOR_ID, label: "Government ID", icon: IdCard },

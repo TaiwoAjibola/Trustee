@@ -10,7 +10,6 @@ import { authOptions } from "@/lib/auth";
 import { DrawdownStatus, DocumentType } from "@prisma/client";
 import { formatNaira } from "@/lib/utils";
 
-export const instant = false;
 
 export default async function MonitorAssignmentsPage() {
   const session = await getServerSession(authOptions);

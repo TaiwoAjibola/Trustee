@@ -14,7 +14,7 @@ const SEED_USERS = [
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("fiduciary@firsttrustees.com");
-  const [password, setPassword] = useState("hashed_pass");
+  const [password, setPassword] = useState("Pass1234!");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

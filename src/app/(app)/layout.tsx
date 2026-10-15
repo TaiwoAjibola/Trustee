@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { AppShell, type AppUser } from "@/components/AppShell";
 import { Role } from "@prisma/client";
 
-export const instant = false;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);

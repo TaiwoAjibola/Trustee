@@ -5,7 +5,6 @@ import { ReconciliationPanel } from "@/components/ReconciliationPanel";
 import { DrawdownStatus } from "@prisma/client";
 import { FileBarChart, TrendingUp, Landmark, Scale, PiggyBank } from "lucide-react";
 
-export const instant = false;
 
 export default async function ReportsPage() {
   const projects = await prisma.project.findMany({

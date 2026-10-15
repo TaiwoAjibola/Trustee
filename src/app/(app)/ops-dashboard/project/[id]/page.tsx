@@ -23,7 +23,6 @@ import { authOptions } from "@/lib/auth";
 import { Role, AccountType } from "@prisma/client";
 import { formatNaira } from "@/lib/utils";
 
-export const instant = false;
 
 export default async function ProjectLedgerPage({
   params,

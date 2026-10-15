@@ -7,7 +7,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { DrawdownStatus } from "@prisma/client";
 
-export const instant = false;
 
 export default async function MonitorAssetsPage() {
   const session = await getServerSession(authOptions);
