@@ -22,6 +22,12 @@ type NavItem = { href: string; label: string; icon: React.ElementType; match?: s
 const TRUSTEE_NAV: NavItem[] = [
   { href: "/ops-dashboard", label: "Dashboard", icon: LayoutDashboard, match: "/ops-dashboard" },
   {
+    href: "/ops-dashboard/projects",
+    label: "Projects",
+    icon: Building2,
+    match: "/ops-dashboard/projects",
+  },
+  {
     href: "/ops-dashboard/portfolio",
     label: "Portfolio & Investors",
     icon: Briefcase,

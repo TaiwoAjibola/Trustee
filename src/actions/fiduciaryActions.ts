@@ -190,6 +190,46 @@ export async function createProject(data: {
     data: { projectId: project.id },
   });
 
+  const suffix = project.code.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(-6) || "NEW";
+  await prisma.developer.create({
+    data: {
+      projectId: project.id,
+      name: `${data.name} — Sponsor Developer`,
+      contactEmail: "developer@example.com",
+      pocName: "Project Sponsor",
+      pocRole: "Development Principal",
+    },
+  });
+  await Promise.all([
+    prisma.bankAccount.create({
+      data: {
+        projectId: project.id,
+        type: AccountType.PROJECT_INVESTMENT_ACCT,
+        accountNumber: `01${suffix}11`,
+        bankName: "First Trustees Escrow",
+        balance: 0,
+      },
+    }),
+    prisma.bankAccount.create({
+      data: {
+        projectId: project.id,
+        type: AccountType.ASSET_PURCHASE_ACCT,
+        accountNumber: `01${suffix}22`,
+        bankName: "First Trustees Escrow",
+        balance: 0,
+      },
+    }),
+    prisma.bankAccount.create({
+      data: {
+        projectId: project.id,
+        type: AccountType.PROJECT_EXECUTION_ACCT,
+        accountNumber: `01${suffix}33`,
+        bankName: "First Trustees Escrow",
+        balance: 0,
+      },
+    }),
+  ]);
+
   revalidatePath("/ops-dashboard");
   return project;
 }

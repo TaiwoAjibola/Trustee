@@ -13,7 +13,7 @@ import { SlaBadge, StatusBadge } from "@/components/Badges";
 import { SubmitDrawdownForm } from "@/components/SubmitDrawdownForm";
 import { ConditionPrecedentPanel } from "@/components/ConditionPrecedentPanel";
 import { AuditLogTimeline } from "@/components/AuditLogTimeline";
-import { AppointMonitorForm } from "@/components/AppointMonitorForm";
+import { MonitorAppointmentPanel } from "@/components/MonitorAppointmentPanel";
 import { ReconciliationPanel } from "@/components/ReconciliationPanel";
 import { RecordInflowForm } from "@/components/RecordInflowForm";
 import { VacateLienButton, ExecuteDistributionButton } from "@/components/ProjectLifecycleActions";
@@ -48,8 +48,11 @@ export default async function ProjectLedgerPage({
     (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
   const isFiduciary = role === Role.FIDUCIARY_EXEC;
 
-  const [projectMonitor, monitorUsers, monitorAssignments, notifications] = await Promise.all([
-    prisma.projectMonitor.findFirst({ where: { projectId: id } }),
+  const [projectMonitors, monitorUsers, monitorAssignments, notifications] = await Promise.all([
+    prisma.projectMonitor.findMany({
+      where: { projectId: id },
+      include: { monitor: true },
+    }),
     prisma.user.findMany({
       where: { role: Role.INDEPENDENT_MONITOR },
       select: { id: true, name: true, email: true },
@@ -60,6 +63,16 @@ export default async function ProjectLedgerPage({
       orderBy: { createdAt: "desc" },
     }),
   ]);
+
+  const appointedIds = projectMonitors.map((pm) => pm.monitorId);
+  const availableMonitors = monitorUsers.filter((m) => !appointedIds.includes(m.id));
+  const appointments = projectMonitors.map((pm) => ({
+    monitorId: pm.monitorId,
+    name: pm.monitor.name,
+    email: pm.monitor.email,
+    eligibilityCriteriaMet: pm.eligibilityCriteriaMet,
+    independenceDeclarationSigned: pm.independenceDeclarationSigned,
+  }));
 
   const investmentAcct = project.bankAccounts.find(
     (a) => a.type === AccountType.PROJECT_INVESTMENT_ACCT
@@ -224,10 +237,8 @@ export default async function ProjectLedgerPage({
           {project.drawdownRequests.map((req) => {
             const assignment =
               monitorAssignments.find((a) => a.drawdownRequestId === req.id) ?? null;
-            const monitorId = projectMonitor?.monitorId ?? null;
-            const monitorName = projectMonitor
-              ? monitorUsers.find((m) => m.id === projectMonitor.monitorId)?.name
-              : undefined;
+            const monitorId = projectMonitors[0]?.monitorId ?? null;
+            const monitorName = projectMonitors[0]?.monitor.name ?? undefined;
             return (
               <div
                 key={req.id}
@@ -271,31 +282,11 @@ export default async function ProjectLedgerPage({
           <ShieldCheck className="w-5 h-5 text-violet-600 mr-2" />
           Independent Monitor Appointment
         </h2>
-        {projectMonitor ? (
-          <div className="text-sm text-slate-700 space-y-1">
-            <p>
-              Appointed Monitor:{" "}
-              <span className="text-slate-900 font-semibold">{monitorUsers.find((m) => m.id === projectMonitor.monitorId)?.name ?? projectMonitor.monitorId}</span>
-            </p>
-            <p>
-              Master-level eligibility met:{" "}
-              <span className={projectMonitor.eligibilityCriteriaMet ? "text-emerald-600" : "text-rose-600"}>
-                {projectMonitor.eligibilityCriteriaMet ? "Yes" : "No"}
-              </span>
-            </p>
-            <p>
-              Independence &amp; conflict declaration:{" "}
-              <span className={projectMonitor.independenceDeclarationSigned ? "text-emerald-600" : "text-amber-600"}>
-                {projectMonitor.independenceDeclarationSigned ? "Signed" : "Pending signature by Monitor"}
-              </span>
-            </p>
-            <p className="text-xs text-slate-500">
-              Monitor fees are borne by First Trustees (cost tracked on the cash ledger).
-            </p>
-          </div>
-        ) : (
-          <AppointMonitorForm projectId={project.id} monitors={monitorUsers} />
-        )}
+        <MonitorAppointmentPanel
+          projectId={project.id}
+          available={availableMonitors}
+          appointments={appointments}
+        />
       </div>
 
       {/* Reconciliation & Inflows */}

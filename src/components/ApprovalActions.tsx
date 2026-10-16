@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Role, DrawdownStatus } from "@prisma/client";
 import {
   acknowledgeDrawdown,
-  recommendDrawdown,
   approveAndPayDrawdown,
   resolveDeficiency,
 } from "@/actions/fiduciaryActions";
@@ -50,15 +49,6 @@ export function ApprovalActions({
             className="text-xs px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold disabled:opacity-60"
           >
             Acknowledge (Ops)
-          </button>
-        )}
-        {status === DrawdownStatus.ACKNOWLEDGED && role === Role.OPS_LEAD && (
-          <button
-            onClick={() => run(() => recommendDrawdown(drawdownRequestId))}
-            disabled={pending}
-            className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold disabled:opacity-60"
-          >
-            Verify & Recommend (Ops Lead)
           </button>
         )}
         {status === DrawdownStatus.APPROVED && role === Role.FIDUCIARY_EXEC && (
