@@ -5,6 +5,7 @@ import { ArrowUpRight, PlusCircle } from "lucide-react";
 import { SlaBadge, StatusBadge } from "@/components/Badges";
 import { DeficiencyDialog } from "@/components/DeficiencyDialog";
 import { ApprovalActions } from "@/components/ApprovalActions";
+import { MonitorInitiator } from "@/components/MonitorInitiator";
 import { CreateProjectForm } from "@/components/CreateProjectForm";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -18,12 +19,17 @@ export default async function OpsDashboardPage() {
 
   const requests = await prisma.drawdownRequest.findMany({
     include: {
-      project: true,
+      project: { include: { projectMonitors: true } },
       requestedBy: true,
       deficiencyNotices: true,
     },
     orderBy: { submissionDate: "desc" },
   });
+
+  const monitorAssignments = await prisma.monitorAssignment.findMany({});
+  const assignmentByRequest = new Map(
+    monitorAssignments.map((a) => [a.drawdownRequestId, a])
+  );
 
   const totalInCustody = await prisma.bankAccount.aggregate({
     _sum: { balance: true },
@@ -138,6 +144,11 @@ export default async function OpsDashboardPage() {
                   </td>
                   <td className="px-6 py-4 space-y-2">
                     <ApprovalActions drawdownRequestId={req.id} status={req.status} role={role} />
+                    <MonitorInitiator
+                      drawdownRequestId={req.id}
+                      monitorId={req.project.projectMonitors[0]?.monitorId ?? null}
+                      initiated={!!assignmentByRequest.get(req.id)}
+                    />
                     {req.status === DrawdownStatus.SUBMITTED && (
                       <DeficiencyDialog drawdownRequestId={req.id} />
                     )}

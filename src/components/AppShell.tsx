@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Landmark,
   Building2,
+  Briefcase,
 } from "lucide-react";
 import { Role } from "@prisma/client";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -20,6 +21,12 @@ type NavItem = { href: string; label: string; icon: React.ElementType; match?: s
 
 const TRUSTEE_NAV: NavItem[] = [
   { href: "/ops-dashboard", label: "Dashboard", icon: LayoutDashboard, match: "/ops-dashboard" },
+  {
+    href: "/ops-dashboard/portfolio",
+    label: "Portfolio & Investors",
+    icon: Briefcase,
+    match: "/portfolio",
+  },
   { href: "/ops-dashboard/monitors", label: "Monitors (KYC)", icon: Users, match: "/monitors" },
   { href: "/reports", label: "Reports", icon: FileBarChart, match: "/reports" },
   {

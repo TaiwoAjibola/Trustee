@@ -250,6 +250,92 @@ const store: Record<string, Rec[]> = {
       timestamp: daysAgo(120),
     },
   ],
+
+  // --- Parties outside First Trustees: the capital subscribers and the developer ---
+  investor: [
+    {
+      id: "inv_1",
+      projectId: "proj_1",
+      name: "Highnet Heritage Partners",
+      email: "capital@highnet.com",
+      committedAmount: 200_000_000,
+      kycStatus: KycStatus.VERIFIED,
+      paymentStatus: "ACKNOWLEDGED",
+      paidAt: daysAgo(118),
+      acknowledgedAt: daysAgo(117),
+    },
+    {
+      id: "inv_2",
+      projectId: "proj_1",
+      name: "Lagos Pension Co-Investment Scheme",
+      email: "investments@lpcs.ng",
+      committedAmount: 150_000_000,
+      kycStatus: KycStatus.VERIFIED,
+      paymentStatus: "RECEIVED",
+      paidAt: daysAgo(4),
+      acknowledgedAt: null,
+    },
+    {
+      id: "inv_3",
+      projectId: "proj_1",
+      name: "Midas Family Office",
+      email: "office@midas.ng",
+      committedAmount: 100_000_000,
+      kycStatus: KycStatus.UNDER_REVIEW,
+      paymentStatus: "RECEIVED",
+      paidAt: daysAgo(2),
+      acknowledgedAt: null,
+    },
+  ],
+  developer: [
+    {
+      id: "dev_1",
+      projectId: "proj_1",
+      name: "Harbor Alpha Developers Ltd",
+      contactEmail: "finance@harboralpha.com",
+      pocName: "Mr. Tunde Balogun",
+      pocRole: "Project Finance Director",
+    },
+  ],
+
+  // --- Trustee-initiated per-drawdown monitor assignment (the "card" the monitor acts on) ---
+  monitorAssignment: [
+    {
+      id: "ma_1",
+      drawdownRequestId: "dr_1",
+      projectId: "proj_1",
+      monitorId: "user_mon",
+      phase: GateType.G2_SUBSTRUCTURE,
+      status: "INITIATED",
+      initiatedAt: daysAgo(1),
+      confirmedAt: null,
+      notes: null,
+    },
+  ],
+
+  // --- Outbound communications / receipts issued by the Trustee (to developer & investors) ---
+  notification: [
+    {
+      id: "nt_1",
+      projectId: "proj_1",
+      recipientType: "DEVELOPER",
+      recipientRef: "dev_1",
+      title: "Drawdown DR_… (G1) Acknowledged",
+      body: "Your Gate G1 drawdown request has been acknowledged by First Trustees. Independent Monitor appointed for verification.",
+      relatedDrawdownId: "dr_2",
+      createdAt: daysAgo(6),
+    },
+    {
+      id: "nt_2",
+      projectId: "proj_1",
+      recipientType: "INVESTOR",
+      recipientRef: "inv_1",
+      title: "Capital Safely Safeguarded",
+      body: "Your subscription of ₦200,000,000 has been acknowledged and is held in the Project Investment trust account.",
+      relatedDrawdownId: null,
+      createdAt: daysAgo(117),
+    },
+  ],
 };
 
 const RELATIONS: Record<string, Record<string, { model: string; local: string; remote: string; many: boolean }>> = {
@@ -265,6 +351,25 @@ const RELATIONS: Record<string, Record<string, { model: string; local: string; r
     auditLogs: { model: "auditLog", local: "id", remote: "projectId", many: true },
     cashTransactions: { model: "cashTransaction", local: "id", remote: "projectId", many: true },
     projectMonitors: { model: "projectMonitor", local: "id", remote: "projectId", many: true },
+    investors: { model: "investor", local: "id", remote: "projectId", many: true },
+    developers: { model: "developer", local: "id", remote: "projectId", many: true },
+    monitorAssignments: { model: "monitorAssignment", local: "id", remote: "projectId", many: true },
+    notifications: { model: "notification", local: "id", remote: "projectId", many: true },
+  },
+  investor: {
+    project: { model: "project", local: "projectId", remote: "id", many: false },
+  },
+  developer: {
+    project: { model: "project", local: "projectId", remote: "id", many: false },
+  },
+  monitorAssignment: {
+    project: { model: "project", local: "projectId", remote: "id", many: false },
+    drawdownRequest: { model: "drawdownRequest", local: "drawdownRequestId", remote: "id", many: false },
+    monitor: { model: "user", local: "monitorId", remote: "id", many: false },
+  },
+  notification: {
+    project: { model: "project", local: "projectId", remote: "id", many: false },
+    drawdownRequest: { model: "drawdownRequest", local: "relatedDrawdownId", remote: "id", many: false },
   },
   drawdownRequest: {
     project: { model: "project", local: "projectId", remote: "id", many: false },
@@ -372,6 +477,26 @@ function orderBy(records: Rec[], orderBy: Rec): Rec[] {
   return dir === "desc" ? sorted.reverse() : sorted;
 }
 
+// Applies a Prisma-style data payload, honoring atomic `increment`/`decrement`
+// operators (used by the cash ledger) so numeric fields stay numbers.
+function applyData(rec: Rec, data: Rec): Rec {
+  for (const [key, value] of Object.entries(data)) {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      ("increment" in value || "decrement" in value)
+    ) {
+      const current = Number(rec[key]) || 0;
+      const n = Number((value as Rec).increment ?? 0) - Number((value as Rec).decrement ?? 0);
+      rec[key] = current + n;
+    } else {
+      rec[key] = value;
+    }
+  }
+  return rec;
+}
+
 function makeModel(model: string) {
   return {
     findMany: async (args: Rec = {}) => {
@@ -416,6 +541,7 @@ function makeModel(model: string) {
     },
     create: async (args: Rec) => {
       const rec: Rec = { id: genId(model), ...(args.data as Rec) };
+      applyData(rec, args.data as Rec);
       store[model].push(rec);
       return rec;
     },
@@ -427,21 +553,22 @@ function makeModel(model: string) {
     update: async (args: Rec) => {
       const r = store[model].find((x) => matches(x, args.where as Rec));
       if (!r) return null;
-      Object.assign(r, args.data as Rec);
+      applyData(r, args.data as Rec);
       return args.include ? applyInclude(r, args.include as Rec, model) : r;
     },
     updateMany: async (args: Rec) => {
       const recs = store[model].filter((x) => matches(x, args.where as Rec));
-      recs.forEach((r) => Object.assign(r, args.data as Rec));
+      recs.forEach((r) => applyData(r, args.data as Rec));
       return { count: recs.length };
     },
     upsert: async (args: Rec) => {
       const existing = store[model].find((x) => matches(x, args.where as Rec));
       if (existing) {
-        Object.assign(existing, args.update as Rec);
+        applyData(existing, args.update as Rec);
         return existing;
       }
       const rec: Rec = { id: genId(model), ...(args.create as Rec) };
+      applyData(rec, args.create as Rec);
       store[model].push(rec);
       return rec;
     },

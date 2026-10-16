@@ -15,9 +15,13 @@ export default async function MonitorAssignmentsPage() {
   const session = await getServerSession(authOptions);
   const meId = (session?.user as unknown as { id?: string } | undefined)?.id ?? "";
 
+  const myAppointments = await prisma.projectMonitor.findMany({ where: { monitorId: meId } });
+  const appointmentByProject = new Map(myAppointments.map((a) => [a.projectId, a]));
+  const appointedProjectIds = myAppointments.map((a) => a.projectId);
+
   const requests = await prisma.drawdownRequest.findMany({
     where: {
-      project: { projectMonitors: { some: { monitorId: meId } } },
+      projectId: { in: appointedProjectIds },
       status: { in: [DrawdownStatus.SUBMITTED, DrawdownStatus.ACKNOWLEDGED, DrawdownStatus.DEFICIENT] },
     },
     include: {
@@ -29,8 +33,11 @@ export default async function MonitorAssignmentsPage() {
     orderBy: { submissionDate: "desc" },
   });
 
-  const myAppointments = await prisma.projectMonitor.findMany({ where: { monitorId: meId } });
-  const appointmentByProject = new Map(myAppointments.map((a) => [a.projectId, a]));
+  const myAssignments = await prisma.monitorAssignment.findMany({
+    where: { monitorId: meId },
+    orderBy: { initiatedAt: "desc" },
+  });
+  const assignmentByRequest = new Map(myAssignments.map((a) => [a.drawdownRequestId, a]));
 
   const evidenceOf = (reqId: string) =>
     requests
@@ -76,6 +83,13 @@ export default async function MonitorAssignmentsPage() {
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <Camera className="w-4 h-4" /> SLA Clock: <SlaBadge deadline={req.slaDeadline} />
                 </div>
+
+                {assignmentByRequest.get(req.id) && (
+                  <p className="text-xs text-violet-600 flex items-center gap-1 bg-violet-500/10 border border-violet-500/30 rounded-md px-2 py-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Initiated by Trustee to verify phase {GATE_LABELS[assignmentByRequest.get(req.id)!.phase]} before disbursement.
+                  </p>
+                )}
 
                 {req.monitorCertificates.length > 0 && (
                   <p className="text-xs text-violet-600 flex items-center gap-1">

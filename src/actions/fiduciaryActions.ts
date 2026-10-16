@@ -155,6 +155,12 @@ export async function certifyMonitorProgress(data: {
     },
   });
 
+  // Close the Trustee-initiated monitoring assignment for this phase.
+  await prisma.monitorAssignment.updateMany({
+    where: { drawdownRequestId: data.drawdownRequestId, status: { not: "CONFIRMED" } },
+    data: { status: "CONFIRMED", confirmedAt: new Date() },
+  });
+
   revalidatePath("/monitor-portal");
   revalidatePath("/ops-dashboard");
   return certificate;
@@ -353,17 +359,46 @@ export async function approveAndPayDrawdown(drawdownRequestId: string) {
     });
   }
 
+  // Issue receipts / feedback to the developer and all project investors.
+  const dev = await prisma.developer.findFirst({ where: { projectId: updated.projectId } });
+  if (dev) {
+    await prisma.notification.create({
+      data: {
+        projectId: updated.projectId,
+        recipientType: "DEVELOPER",
+        recipientRef: dev.id,
+        title: "Disbursement Receipt",
+        body: `Payment of ₦${updated.requestedAmount.toLocaleString()} for ${updated.gateType} has been released to your execution account. Receipt FT-${updated.id.slice(0, 6).toUpperCase()} issued by First Trustees.`,
+        relatedDrawdownId: updated.id,
+      },
+    });
+  }
+  const investors = await prisma.investor.findMany({ where: { projectId: updated.projectId } });
+  for (const inv of investors) {
+    await prisma.notification.create({
+      data: {
+        projectId: updated.projectId,
+        recipientType: "INVESTOR",
+        recipientRef: inv.id,
+        title: "Drawdown Released to Developer",
+        body: `A drawdown of ₦${updated.requestedAmount.toLocaleString()} for ${updated.gateType} has been released to the developer. Your safeguarded capital remains tracked and reconciled by the Trustee.`,
+        relatedDrawdownId: updated.id,
+      },
+    });
+  }
+
   await prisma.auditLog.create({
     data: {
       projectId: updated.projectId,
       actorId: actor.id,
       actorName: actor.name,
       action: "DRAWDOWN_PAID",
-      details: `Fiduciary Exec approved final payment of ₦${updated.requestedAmount.toLocaleString()}.`,
+      details: `Fiduciary Exec approved final payment of ₦${updated.requestedAmount.toLocaleString()}. Receipts issued to developer and ${investors.length} investor(s).`,
     },
   });
   revalidatePath("/ops-dashboard");
   revalidatePath(`/ops-dashboard/project/${updated.projectId}`);
+  revalidatePath("/ops-dashboard/portfolio");
 }
 
 export async function resolveDeficiency(drawdownRequestId: string) {
@@ -772,5 +807,151 @@ export async function executeInvestorDistribution(projectId: string) {
 
   revalidatePath(`/ops-dashboard/project/${projectId}`);
   return { txn, exit };
+}
+
+/* ---------------------------------------------------------------------------
+ * MODULE 7 — Trustee-facing capital & developer workflow (stakeholder loop)
+ *   1. See projects + investors        2. Acknowledge investor payments
+ *   4. Initiate independent monitor    5. Confirm & feedback to developer
+ *   6. Payment + receipts (handled in approveAndPayDrawdown)
+ * ------------------------------------------------------------------------- */
+
+export async function acknowledgeInvestorPayment(investorId: string) {
+  const actor = await currentActor();
+  const inv = await prisma.investor.findUnique({ where: { id: investorId } });
+  if (!inv) throw new Error("Investor not found.");
+  if (inv.paymentStatus === "ACKNOWLEDGED") {
+    throw new Error("This investor payment has already been acknowledged.");
+  }
+
+  const updated = await prisma.investor.update({
+    where: { id: investorId },
+    data: { paymentStatus: "ACKNOWLEDGED", acknowledgedAt: new Date() },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      projectId: updated.projectId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "INVESTOR_PAYMENT_ACKNOWLEDGED",
+      details: `Trustee acknowledged ${updated.name} subscription of ₦${updated.committedAmount.toLocaleString()} into the Project Investment trust account.`,
+      timestamp: new Date(),
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      projectId: updated.projectId,
+      recipientType: "INVESTOR",
+      recipientRef: updated.id,
+      title: "Payment Acknowledged by Trustee",
+      body: `First Trustees has acknowledged your subscription of ₦${updated.committedAmount.toLocaleString()}. Funds are safeguarded in the Project Investment trust account.`,
+      relatedDrawdownId: null,
+    },
+  });
+
+  revalidatePath("/ops-dashboard/portfolio");
+  revalidatePath(`/ops-dashboard/project/${updated.projectId}`);
+  return updated;
+}
+
+export async function initiateMonitorForDrawdown(drawdownRequestId: string, monitorId: string) {
+  const actor = await currentActor();
+  const req = await prisma.drawdownRequest.findUnique({
+    where: { id: drawdownRequestId },
+    include: { project: { include: { projectMonitors: true } } },
+  });
+  if (!req) throw new Error("Drawdown request not found.");
+
+  const existing = await prisma.monitorAssignment.findFirst({
+    where: { drawdownRequestId, status: { not: "CONFIRMED" } },
+  });
+  if (existing) throw new Error("A monitor has already been initiated for this drawdown.");
+
+  const assignment = await prisma.monitorAssignment.create({
+    data: {
+      drawdownRequestId,
+      projectId: req.projectId,
+      monitorId,
+      phase: req.gateType,
+      status: "INITIATED",
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      projectId: req.projectId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "MONITOR_INITIATED",
+      details: `Independent Monitor ${monitorId} initiated to verify phase ${req.gateType} before trustee disbursement.`,
+      timestamp: new Date(),
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      projectId: req.projectId,
+      recipientType: "MONITOR",
+      recipientRef: monitorId,
+      title: "New Monitoring Assignment",
+      body: `You have been initiated to verify phase ${req.gateType} for drawdown ${req.id.slice(0, 8)} before trustee disbursement.`,
+      relatedDrawdownId: drawdownRequestId,
+    },
+  });
+
+  revalidatePath("/ops-dashboard");
+  revalidatePath(`/ops-dashboard/project/${req.projectId}`);
+  revalidatePath("/monitor-portal/assignments");
+  return assignment;
+}
+
+export async function confirmAndNotifyDeveloper(drawdownRequestId: string) {
+  const actor = await currentActor();
+  const req = await prisma.drawdownRequest.findUnique({
+    where: { id: drawdownRequestId },
+    include: { monitorCertificates: true },
+  });
+  if (!req) throw new Error("Drawdown request not found.");
+  if (req.monitorCertificates.length === 0) {
+    throw new Error(
+      "CONTROL GATE: Independent Monitor must confirm the phase before the Trustee can issue feedback to the developer."
+    );
+  }
+
+  const updated = await prisma.drawdownRequest.update({
+    where: { id: drawdownRequestId },
+    data: { status: DrawdownStatus.APPROVED },
+  });
+
+  const dev = await prisma.developer.findFirst({ where: { projectId: updated.projectId } });
+  if (dev) {
+    await prisma.notification.create({
+      data: {
+        projectId: updated.projectId,
+        recipientType: "DEVELOPER",
+        recipientRef: dev.id,
+        title: "Phase Confirmed — Payment to be Released",
+        body: `First Trustees has confirmed phase ${req.gateType} (Independent Monitor verified). Disbursement will be released by the Fiduciary Exec shortly.`,
+        relatedDrawdownId: drawdownRequestId,
+      },
+    });
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      projectId: updated.projectId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "DEVELOPER_FEEDBACK_SENT",
+      details: `Trustee confirmed ${req.gateType} and issued feedback to the developer. Payment pending fiduciary release.`,
+      timestamp: new Date(),
+    },
+  });
+
+  revalidatePath("/ops-dashboard");
+  revalidatePath(`/ops-dashboard/project/${updated.projectId}`);
+  return updated;
 }
 

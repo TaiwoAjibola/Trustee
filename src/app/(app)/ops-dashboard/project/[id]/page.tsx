@@ -10,7 +10,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { SlaBadge, StatusBadge } from "@/components/Badges";
-import { ApprovalActions } from "@/components/ApprovalActions";
 import { SubmitDrawdownForm } from "@/components/SubmitDrawdownForm";
 import { ConditionPrecedentPanel } from "@/components/ConditionPrecedentPanel";
 import { AuditLogTimeline } from "@/components/AuditLogTimeline";
@@ -18,6 +17,8 @@ import { AppointMonitorForm } from "@/components/AppointMonitorForm";
 import { ReconciliationPanel } from "@/components/ReconciliationPanel";
 import { RecordInflowForm } from "@/components/RecordInflowForm";
 import { VacateLienButton, ExecuteDistributionButton } from "@/components/ProjectLifecycleActions";
+import { TrusteeWorkflowStepper } from "@/components/TrusteeWorkflowStepper";
+import { CommunicationsPanel } from "@/components/CommunicationsPanel";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Role, AccountType } from "@prisma/client";
@@ -47,11 +48,16 @@ export default async function ProjectLedgerPage({
     (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
   const isFiduciary = role === Role.FIDUCIARY_EXEC;
 
-  const [projectMonitor, monitorUsers] = await Promise.all([
+  const [projectMonitor, monitorUsers, monitorAssignments, notifications] = await Promise.all([
     prisma.projectMonitor.findFirst({ where: { projectId: id } }),
     prisma.user.findMany({
       where: { role: Role.INDEPENDENT_MONITOR },
       select: { id: true, name: true, email: true },
+    }),
+    prisma.monitorAssignment.findMany({ where: { projectId: id } }),
+    prisma.notification.findMany({
+      where: { projectId: id },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -215,24 +221,38 @@ export default async function ProjectLedgerPage({
           {project.drawdownRequests.length === 0 && (
             <p className="text-sm text-slate-500">No drawdown requests on this project yet.</p>
           )}
-          {project.drawdownRequests.map((req) => (
-            <div
-              key={req.id}
-              className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-slate-200 rounded-lg p-4"
-            >
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{GATE_LABELS[req.gateType]}</p>
-                <p className="text-xs text-slate-500">
-                  {formatNaira(req.requestedAmount)} · {req.id.slice(0, 8)}
-                </p>
-                <div className="mt-2 flex gap-2">
+          {project.drawdownRequests.map((req) => {
+            const assignment =
+              monitorAssignments.find((a) => a.drawdownRequestId === req.id) ?? null;
+            const monitorId = projectMonitor?.monitorId ?? null;
+            const monitorName = projectMonitor
+              ? monitorUsers.find((m) => m.id === projectMonitor.monitorId)?.name
+              : undefined;
+            return (
+              <div
+                key={req.id}
+                className="border border-slate-200 rounded-lg p-4 space-y-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {GATE_LABELS[req.gateType]}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {formatNaira(req.requestedAmount)} · {req.id.slice(0, 8)}
+                  </p>
                   <SlaBadge deadline={req.slaDeadline} />
                   <StatusBadge status={req.status} />
                 </div>
+                <TrusteeWorkflowStepper
+                  request={req}
+                  monitorAssignment={assignment}
+                  monitorId={monitorId}
+                  monitorName={monitorName}
+                  role={role}
+                />
               </div>
-              <ApprovalActions drawdownRequestId={req.id} status={req.status} role={role} />
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {project.conditionPrecedent?.clearedForActivation && (
@@ -322,6 +342,19 @@ export default async function ProjectLedgerPage({
           </div>
         </div>
       )}
+
+      {/* Communications & Receipts */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+        <h2 className="text-md font-bold text-slate-900 flex items-center">
+          <Landmark className="w-5 h-5 text-sky-600 mr-2" />
+          Developer Feedback &amp; Investor Receipts
+        </h2>
+        <p className="text-xs text-slate-500">
+          Outbound communications issued by First Trustees — drawdown receipts to the developer,
+          phase-confirmation feedback, and capital-safeguarding notices to investors.
+        </p>
+        <CommunicationsPanel notifications={notifications} />
+      </div>
 
       {/* Audit Log */}
       <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">

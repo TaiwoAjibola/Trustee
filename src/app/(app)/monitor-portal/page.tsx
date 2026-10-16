@@ -29,7 +29,7 @@ export default async function MonitorAssetsPage() {
 
   const pendingCount = await prisma.drawdownRequest.count({
     where: {
-      project: { projectMonitors: { some: { monitorId: meId } } },
+      projectId: { in: appointments.map((a) => a.projectId) },
       status: { in: [DrawdownStatus.SUBMITTED, DrawdownStatus.ACKNOWLEDGED, DrawdownStatus.DEFICIENT] },
     },
   });
