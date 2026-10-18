@@ -41,16 +41,6 @@ const store: Record<string, Rec[]> = {
       updatedAt: daysAgo(10),
     },
     {
-      id: "user_ops",
-      name: "Chioma Ops Analyst",
-      email: "ops@firsttrustees.com",
-      hashedPassword: "hashed_pass",
-      role: Role.OPS_ANALYST,
-      isActive: true,
-      createdAt: daysAgo(180),
-      updatedAt: daysAgo(10),
-    },
-    {
       id: "user_mon",
       name: "Engr. Kabir (Independent Monitor)",
       email: "monitor@tech-cert.org",
@@ -336,10 +326,10 @@ const store: Record<string, Rec[]> = {
     {
       id: "al_2",
       projectId: "proj_1",
-      actorId: "user_ops",
-      actorName: "Ngozi Ops Analyst",
+      actorId: "user_fidu",
+      actorName: "Adewale Fiduciary Lead",
       action: "DRAWDOWN_ACKNOWLEDGED",
-      details: "Ops Analyst acknowledged KYC & invoice verification for G2 Substructure.",
+      details: "Trustee acknowledged KYC & invoice verification for G2 Substructure.",
       timestamp: daysAgo(5),
     },
     {

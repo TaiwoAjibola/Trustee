@@ -6,7 +6,6 @@ import { ShieldCheck, Loader2 } from "lucide-react";
 
 const SEED_USERS = [
   { label: "Fiduciary Exec", email: "fiduciary@firsttrustees.com" },
-  { label: "Ops Analyst", email: "ops@firsttrustees.com" },
   { label: "Independent Monitor", email: "monitor@tech-cert.org" },
 ];
 

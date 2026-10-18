@@ -7,7 +7,6 @@ import { Role } from "@prisma/client";
 // credential store). Passwords are not checked for the MVP seed accounts.
 const DEMO_USERS = [
   { id: "user_fidu", name: "Adewale Fiduciary Lead", email: "fiduciary@firsttrustees.com", role: Role.FIDUCIARY_EXEC },
-  { id: "user_ops", name: "Chioma Ops Analyst", email: "ops@firsttrustees.com", role: Role.OPS_ANALYST },
   { id: "user_mon", name: "Engr. Kabir (Independent Monitor)", email: "monitor@tech-cert.org", role: Role.INDEPENDENT_MONITOR },
 ];
 
