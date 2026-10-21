@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import {
   MAX_OVERLAY_USERS,
+  mergeOverlayUsersIntoStore,
   readOverlayUsers,
   upsertOverlayUser,
 } from "@/lib/userOverlay";
@@ -20,6 +21,7 @@ async function currentTrustee() {
   if (role === Role.INDEPENDENT_MONITOR) {
     throw new Error("Independent Monitors cannot manage the trustee team.");
   }
+  await mergeOverlayUsersIntoStore();
   return {
     id: (session.user as unknown as { id: string }).id,
     name: session.user.name ?? "System",
