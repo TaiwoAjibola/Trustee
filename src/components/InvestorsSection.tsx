@@ -1,4 +1,3 @@
-import { InvestorPaymentAck } from "@/components/InvestorPaymentAck";
 import { InvestorPaymentBadge } from "@/components/Badges";
 import { formatDateTime, formatNaira } from "@/lib/utils";
 import { ChevronDown, UserRound } from "lucide-react";
@@ -17,6 +16,8 @@ type Payment = {
   reference: string;
   status: string;
   paidAt: Date | string;
+  receivedAt?: Date | string;
+  acknowledgedAt?: Date | string | null;
   receiptRef: string | null;
   notificationStatus: string;
 };
@@ -40,8 +41,9 @@ export function InvestorsSection({ investors }: { investors: Investor[] }) {
     <div className="space-y-3">
       <p className="text-xs text-slate-500">
         An investment commitment is separate from cash received. Amount paid is the total of
-        confirmed payments; outstanding is shown only where the commitment exceeds confirmed
-        payments.
+        payments confirmed by the source application; outstanding is shown only where the
+        commitment exceeds confirmed payments. Receipts are issued automatically when a payment is
+        confirmed — no manual acknowledgement is required.
       </p>
       {investors.map((investor) => {
         const paid = investor.payments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -127,8 +129,7 @@ export function InvestorsSection({ investors }: { investors: Investor[] }) {
                         <th className="py-2 pr-4">Method</th>
                         <th className="py-2 pr-4">Reference</th>
                         <th className="py-2 pr-4">Status</th>
-                        <th className="py-2 pr-4">Receipt / acknowledgement</th>
-                        <th className="py-2 text-right">Action</th>
+                        <th className="py-2 pr-4">Confirmation</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -155,19 +156,11 @@ export function InvestorsSection({ investors }: { investors: Investor[] }) {
                                 {payment.receiptRef}
                               </span>
                             ) : (
-                              <span className="text-slate-400">Not issued</span>
+                              <span className="text-slate-400">Awaiting source confirmation</span>
                             )}
                             <span className="block text-[10px] text-slate-400 mt-0.5">
                               Notification: {payment.notificationStatus.toLowerCase()}
                             </span>
-                          </td>
-                          <td className="py-2 text-right">
-                            <InvestorPaymentAck
-                              investorId={investor.id}
-                              paymentId={payment.id}
-                              paymentStatus={payment.status}
-                              label="Acknowledge"
-                            />
                           </td>
                         </tr>
                       ))}

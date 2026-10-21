@@ -107,6 +107,9 @@ model Project {
   auditLogs          AuditLog[]
   cashTransactions   CashTransaction[]
   projectMonitors    ProjectMonitor[]
+  sourceMilestones   SourceMilestone[]
+  investorAnnouncements InvestorAnnouncement[]
+  developerMessages  DeveloperMessage[]
 }
 
 model Developer {
@@ -158,6 +161,8 @@ model DrawdownRequest {
   gateType             GateType
   requestedAmount      Float
   status               DrawdownStatus       @default(SUBMITTED)
+  sourceMilestoneId    String?              @unique
+  sourceMilestone      SourceMilestone?     @relation(fields: [sourceMilestoneId], references: [id])
   estimateAtCompletion Float?
   submissionDate       DateTime             @default(now())
   slaDeadline          DateTime
@@ -178,6 +183,30 @@ model DrawdownRequest {
   documents            DocumentVault[]
 
   @@index([projectId, status])
+}
+
+/// Read-only milestone record owned by the originating application.
+/// Local DrawdownRequest rows are trustee review/payment records linked to it.
+model SourceMilestone {
+  id               String           @id @default(cuid())
+  projectId        String
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  externalId       String           @unique
+  gateType         GateType
+  name             String
+  description      String?          @db.Text
+  amount           Float
+  currency         String           @default("NGN")
+  sourceStatus     String           @default("NOT_STARTED")
+  progressPct      Int              @default(0)
+  completedAt      DateTime?
+  dueAt            DateTime?
+  sourceUpdatedAt  DateTime         @default(now())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  drawdownRequest  DrawdownRequest?
+
+  @@index([projectId, gateType])
 }
 
 model DeficiencyNotice {
@@ -339,6 +368,56 @@ model Notification {
   body              String   @db.Text
   relatedDrawdownId String?
   createdAt         DateTime @default(now())
+}
+
+/// Delivery record for an investor announcement. A failed delivery is retained so
+/// the trustee can see it and retry without creating a duplicate announcement.
+model InvestorAnnouncement {
+  id             String    @id @default(cuid())
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  subject        String
+  message        String    @db.Text
+  recipientScope String    @default("ALL")
+  recipientCount Int       @default(0)
+  deliveredCount Int       @default(0)
+  failedCount    Int       @default(0)
+  status         String    @default("SENT")
+  sentById       String
+  sentByName     String
+  sentAt         DateTime  @default(now())
+  lastAttemptAt  DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([projectId, sentAt])
+}
+
+/// Two-way project conversation with the developer. External-origin messages are
+/// mirrored here with their source event id so repeated webhooks are idempotent.
+model DeveloperMessage {
+  id                String   @id @default(cuid())
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  senderId          String
+  senderName        String
+  senderRole        String   @default("TRUSTEE")
+  body              String   @db.Text
+  drawdownRequestId String?
+  sourceEventId     String?  @unique
+  createdAt         DateTime @default(now())
+}
+
+/// Idempotency ledger for source API events. eventId is the source system's
+/// stable identifier; repeated deliveries are acknowledged but not re-applied.
+model IntegrationEvent {
+  id           String   @id @default(cuid())
+  eventId      String   @unique
+  eventType    String
+  status       String   @default("PROCESSED")
+  detail       String?  @db.Text
+  payload      String?  @db.Text
+  processedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
 }
 
 enum CashTxnType {

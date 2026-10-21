@@ -1,10 +1,11 @@
 const SECTIONS = [
   { id: "overview", label: "Overview" },
+  { id: "milestones", label: "Milestones" },
   { id: "investors", label: "Investors" },
   { id: "monitors", label: "Monitors" },
-  { id: "milestones", label: "Milestones" },
   { id: "transactions", label: "Transactions" },
   { id: "documents", label: "Documents" },
+  { id: "communications", label: "Communications" },
   { id: "activity", label: "Activity & audit" },
 ];
 

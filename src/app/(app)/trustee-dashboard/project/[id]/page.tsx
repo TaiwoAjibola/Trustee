@@ -4,28 +4,28 @@ import { calculateInvestorExit, GATE_LABELS } from "@/lib/slaEngine";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowLeft,
   Banknote,
   CheckCircle2,
   FileText,
   Landmark,
   Layers,
+  MessageSquare,
   ShieldCheck,
   Users,
   XCircle,
 } from "lucide-react";
 import { MilestoneStatusBadge, StatusBadge } from "@/components/Badges";
-import { SubmitDrawdownForm } from "@/components/SubmitDrawdownForm";
 import { ConditionPrecedentPanel } from "@/components/ConditionPrecedentPanel";
 import { AuditLogTimeline } from "@/components/AuditLogTimeline";
 import { MonitorAppointmentPanel } from "@/components/MonitorAppointmentPanel";
 import { mergeOverlayUsersIntoStore } from "@/lib/userOverlay";
 import { ReconciliationPanel } from "@/components/ReconciliationPanel";
-import { RecordInflowForm } from "@/components/RecordInflowForm";
 import { VacateLienButton, ExecuteDistributionButton } from "@/components/ProjectLifecycleActions";
-import { CommunicationsPanel } from "@/components/CommunicationsPanel";
 import { InvestorsSection } from "@/components/InvestorsSection";
-import { MilestoneCard } from "@/components/MilestoneCard";
+import { MilestonesOverview } from "@/components/MilestonesOverview";
+import { CommunicationsCentre } from "@/components/CommunicationsCentre";
 import { ProjectSectionNav } from "@/components/ProjectSectionNav";
 import { TransactionsSection } from "@/components/TransactionsSection";
 import { getServerSession } from "next-auth";
@@ -33,6 +33,14 @@ import { authOptions } from "@/lib/auth";
 import { AccountType, DrawdownStatus, Role } from "@prisma/client";
 import { formatDateTime, formatNaira } from "@/lib/utils";
 import { milestoneStatusLabel } from "@/lib/labels";
+import {
+  getProjectInvestorPayments,
+  getProjectMilestones,
+  SOURCE_STATUS_LABELS,
+  type SourceInvestorPayment,
+  type SourceMilestone,
+  type SourceStatus,
+} from "@/lib/sourceApi";
 
 export default async function ProjectWorkspacePage({
   params,
@@ -69,27 +77,141 @@ export default async function ProjectWorkspacePage({
 
   await mergeOverlayUsersIntoStore();
 
-  const [projectMonitors, monitorUsers, monitorAssignments, notifications, users, documents] =
-    await Promise.all([
-      prisma.projectMonitor.findMany({ where: { projectId: id }, include: { monitor: true } }),
-      prisma.user.findMany({
-        where: { role: Role.INDEPENDENT_MONITOR },
-        select: { id: true, name: true, email: true },
-      }),
-      prisma.monitorAssignment.findMany({
-        where: { projectId: id },
-        include: { monitor: true },
-        orderBy: { assignedAt: "desc" },
-      }),
-      prisma.notification.findMany({
-        where: { projectId: id },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.user.findMany({}),
-      prisma.documentVault.findMany({
-        where: { drawdownRequestId: { in: project.drawdownRequests.map((r: { id: string }) => r.id) } },
-      }),
-    ]);
+  const [
+    projectMonitors,
+    monitorUsers,
+    monitorAssignments,
+    announcements,
+    developerMessages,
+    users,
+    documents,
+  ] = await Promise.all([
+    prisma.projectMonitor.findMany({ where: { projectId: id }, include: { monitor: true } }),
+    prisma.user.findMany({
+      where: { role: Role.INDEPENDENT_MONITOR },
+      select: { id: true, name: true, email: true },
+    }),
+    prisma.monitorAssignment.findMany({
+      where: { projectId: id },
+      include: { monitor: true },
+      orderBy: { assignedAt: "desc" },
+    }),
+    prisma.investorAnnouncement.findMany({
+      where: { projectId: id },
+      orderBy: { sentAt: "desc" },
+    }),
+    prisma.developerMessage.findMany({
+      where: { projectId: id },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.user.findMany({}),
+    prisma.documentVault.findMany({
+      where: { drawdownRequestId: { in: project.drawdownRequests.map((r: { id: string }) => r.id) } },
+    }),
+  ]);
+
+  const buildMilestoneReview = (request: any): SourceMilestone["review"] => ({
+    drawdownRequestId: request.id,
+    status: request.status,
+    statusLabel: milestoneStatusLabel(request.status),
+    submittedAt: request.submissionDate,
+    slaDeadline: request.slaDeadline,
+    reviewComment: request.reviewComment ?? null,
+    openDeficiency:
+      (request.deficiencyNotices ?? []).find((notice: any) => !notice.isResolved)
+        ?.consolidatedMessage ?? null,
+    canReview: request.status === DrawdownStatus.CERTIFIED_BY_MONITOR,
+    paymentReference: request.paymentReference ?? null,
+    paymentDate: request.paymentDate ?? null,
+    reportCount: (request.monitorCertificates ?? []).length,
+    documentCount: (request.documents ?? []).length,
+    monitors: monitorAssignments
+      .filter((assignment: any) => assignment.drawdownRequestId === request.id)
+      .map((assignment: any) => ({
+        id: assignment.monitorId,
+        name: assignment.monitor?.name ?? null,
+        email: assignment.monitor?.email ?? null,
+      })),
+  });
+
+  let milestones: SourceMilestone[] = [];
+  let sourceMilestoneMeta: { fetchedAt: string; source: string } | null = null;
+  let paymentsFromSource: SourceInvestorPayment[] = [];
+  let paymentsAreFromSource = false;
+  let sourcePaymentMeta: { fetchedAt: string; source: string } | null = null;
+  const integrationErrors: string[] = [];
+
+  try {
+    const payload = await getProjectMilestones(id);
+    milestones = payload.data.map((milestone) => {
+      const request = project.drawdownRequests.find(
+        (candidate: any) => candidate.sourceMilestoneId === milestone.id
+      );
+      return {
+        ...milestone,
+        review: request ? buildMilestoneReview(request) : null,
+      };
+    });
+    sourceMilestoneMeta = { fetchedAt: payload.fetchedAt, source: payload.source };
+  } catch (error) {
+    integrationErrors.push(
+      `Milestones: ${error instanceof Error ? error.message : "source unavailable"}. Showing locally cached review records instead.`
+    );
+    milestones = project.drawdownRequests.map((request: any) => {
+      const sourceStatus: SourceStatus =
+        request.status === DrawdownStatus.PAID
+          ? "COMPLETED"
+          : request.status === DrawdownStatus.CERTIFIED_BY_MONITOR ||
+              request.status === DrawdownStatus.APPROVED
+            ? "WORK_COMPLETED"
+            : "IN_PROGRESS";
+      return {
+        id: request.sourceMilestoneId ?? request.id,
+        externalId: `LOCAL-${String(request.id).slice(-8).toUpperCase()}`,
+        gateType: request.gateType,
+        name: GATE_LABELS[request.gateType as keyof typeof GATE_LABELS],
+        description: null,
+        amount: request.requestedAmount,
+        currency: "NGN",
+        sourceStatus,
+        sourceStatusLabel: SOURCE_STATUS_LABELS[sourceStatus],
+        progressPct: sourceStatus === "COMPLETED" ? 100 : 50,
+        dueAt: request.slaDeadline,
+        completedAt: request.paymentDate ?? null,
+        sourceUpdatedAt: request.updatedAt ?? request.submissionDate,
+        review: buildMilestoneReview(request),
+      };
+    }) as SourceMilestone[];
+  }
+
+  try {
+    const payload = await getProjectInvestorPayments(id);
+    const localById = new Map(
+      project.investors
+        .flatMap((investor: any) => investor.payments ?? [])
+        .map((payment: any) => [payment.id, payment])
+    );
+    paymentsFromSource = payload.data.map((payment) => {
+      const local = localById.get(payment.id) as
+        | { status?: string; acknowledgedAt?: string; receiptRef?: string; notificationStatus?: string }
+        | undefined;
+      return local?.status === "ACKNOWLEDGED"
+        ? {
+            ...payment,
+            status: local.status,
+            acknowledgedAt: local.acknowledgedAt ?? payment.acknowledgedAt,
+            receiptRef: local.receiptRef ?? payment.receiptRef,
+            notificationStatus: local.notificationStatus ?? payment.notificationStatus,
+          }
+        : payment;
+    });
+    paymentsAreFromSource = true;
+    sourcePaymentMeta = { fetchedAt: payload.fetchedAt, source: payload.source };
+  } catch (error) {
+    integrationErrors.push(
+      `Investor payments: ${error instanceof Error ? error.message : "source unavailable"}. Showing the last local confirmation records instead.`
+    );
+  }
 
   const activeProjectMonitors = projectMonitors.filter((pm: any) => pm.removedAt == null);
   const appointedIds = activeProjectMonitors.map((pm: { monitorId: string }) => pm.monitorId);
@@ -114,16 +236,20 @@ export default async function ProjectWorkspacePage({
     ])
   );
 
-  const developer = project.developers[0];
-  const defaultRecipient = developer
-    ? `${developer.name} — ${developer.pocName ?? "Project contact"}`
-    : "Project developer";
-
-  const allPayments = project.investors.flatMap((investor: any) =>
+  const localPayments = project.investors.flatMap((investor: any) =>
     [...(investor.payments ?? [])].sort(
       (a: any, b: any) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()
     )
   );
+  const allPayments = paymentsAreFromSource ? paymentsFromSource : localPayments;
+  const investorsWithPayments = project.investors.map((investor: any) => ({
+    ...investor,
+    payments: paymentsAreFromSource
+      ? paymentsFromSource.filter((payment) => payment.investorId === investor.id)
+      : [...(investor.payments ?? [])].sort(
+          (a: any, b: any) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()
+        ),
+  }));
   const totalFunding = project.investors.reduce(
     (sum: number, inv: any) => sum + inv.committedAmount,
     0
@@ -211,6 +337,23 @@ export default async function ProjectWorkspacePage({
           </div>
         </div>
       </div>
+
+      {integrationErrors.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+            <AlertTriangle className="w-4 h-4" /> Source application unavailable
+          </p>
+          <ul className="mt-1.5 space-y-1 text-xs text-amber-800">
+            {integrationErrors.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[11px] text-amber-700">
+            Do not treat the figures below as current source-of-truth data until the connection is
+            restored and the page is refreshed.
+          </p>
+        </div>
+      )}
 
       <ProjectSectionNav />
 
@@ -329,20 +472,41 @@ export default async function ProjectWorkspacePage({
         </div>
       </section>
 
+      <section id="milestones" className="scroll-mt-20 space-y-3">
+        <SectionHeader
+          icon={<Layers className="w-4 h-4 text-emerald-600" />}
+          title="Milestones"
+          description="The complete milestone programme is received read-only from the originating application. Trustees review evidence and record decisions locally without recreating source records."
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+          <span>
+            {milestones.length} milestone{milestones.length === 1 ? "" : "s"} received
+            {sourceMilestoneMeta
+              ? ` from ${sourceMilestoneMeta.source} at ${formatDateTime(sourceMilestoneMeta.fetchedAt)}`
+              : " · local fallback view"}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            Source status and trustee review status are shown separately.
+          </span>
+        </div>
+        <MilestonesOverview projectId={project.id} milestones={milestones} />
+      </section>
+
       <section id="investors" className="scroll-mt-20 space-y-3">
         <SectionHeader
           icon={<Users className="w-4 h-4 text-sky-600" />}
           title="Investors"
-          description="Commitments, confirmed payments, outstanding amounts, receipts and payment history for this project."
+          description="Commitments, payments confirmed by the source application, outstanding amounts, receipts and payment history for this project."
         />
-        <InvestorsSection
-          investors={project.investors.map((inv: any) => ({
-            ...inv,
-            payments: [...(inv.payments ?? [])].sort(
-              (a: any, b: any) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()
-            ),
-          }))}
-        />
+        <div className="rounded-xl border border-sky-100 bg-sky-50/60 px-4 py-2.5 text-[11px] text-slate-600">
+          Payments are read from the source application. Receipts and investor notifications are
+          triggered by a confirmed payment event; the trustee does not re-enter or manually
+          acknowledge payments here.
+          {sourcePaymentMeta
+            ? ` Last source sync ${formatDateTime(sourcePaymentMeta.fetchedAt)}.`
+            : ""}
+        </div>
+        <InvestorsSection investors={investorsWithPayments} />
       </section>
 
       <section id="monitors" className="scroll-mt-20 space-y-3">
@@ -406,78 +570,6 @@ export default async function ProjectWorkspacePage({
         </div>
       </section>
 
-      <section id="milestones" className="scroll-mt-20 space-y-3">
-        <SectionHeader
-          icon={<Layers className="w-4 h-4 text-emerald-600" />}
-          title="Milestones"
-          description="Each milestone keeps its report, evidence, decision, approval history and payment record."
-        />
-        <div className="space-y-4">
-          {project.drawdownRequests.length === 0 && (
-            <p className="text-sm text-slate-500">No milestone requests on this project yet.</p>
-          )}
-          {project.drawdownRequests.map((request: any) => (
-            <MilestoneCard
-              key={request.id}
-              projectId={project.id}
-              request={{
-                id: request.id,
-                gateType: request.gateType,
-                requestedAmount: request.requestedAmount,
-                status: request.status,
-                submissionDate: request.submissionDate,
-                slaDeadline: request.slaDeadline,
-                estimateAtCompletion: request.estimateAtCompletion,
-                reviewComment: request.reviewComment,
-                paymentRecipient: request.paymentRecipient,
-                paymentMethod: request.paymentMethod,
-                paymentReference: request.paymentReference,
-                paymentDate: request.paymentDate,
-              }}
-              assignments={monitorAssignments
-                .filter((assignment: any) => assignment.drawdownRequestId === request.id)
-                .map((assignment: any) => ({
-                  id: assignment.id,
-                  monitorId: assignment.monitorId,
-                  status: assignment.status,
-                  assignedAt: assignment.assignedAt ?? assignment.initiatedAt,
-                  monitor: assignment.monitor
-                    ? { name: assignment.monitor.name }
-                    : null,
-                }))}
-              certificates={(request.monitorCertificates ?? []).map((cert: any) => ({
-                id: cert.id,
-                monitorId: cert.monitorId,
-                notes: cert.notes,
-                certifiedAt: cert.certifiedAt ?? cert.issuedAt,
-                issuedAt: cert.issuedAt,
-                estimateAtCompletion: cert.estimateAtCompletion,
-                physicalProgressVerified: cert.physicalProgressVerified,
-                varianceFlagged: cert.varianceFlagged,
-                monitor: cert.monitor ? { name: cert.monitor.name } : null,
-              }))}
-              documents={request.documents ?? []}
-              deficiencies={request.deficiencyNotices ?? []}
-              defaultRecipient={defaultRecipient}
-            />
-          ))}
-        </div>
-
-        {cp?.clearedForActivation && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <p className="text-xs uppercase tracking-wider text-slate-500 mb-3">
-              Request milestone payment
-            </p>
-            {appointments.length === 0 && (
-              <p className="text-xs text-amber-600 mb-2">
-                Assign at least one independent monitor before submitting a milestone.
-              </p>
-            )}
-            <SubmitDrawdownForm projectId={project.id} />
-          </div>
-        )}
-      </section>
-
       <section id="transactions" className="scroll-mt-20 space-y-3">
         <SectionHeader
           icon={<Banknote className="w-4 h-4 text-emerald-600" />}
@@ -494,22 +586,24 @@ export default async function ProjectWorkspacePage({
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <ReconciliationPanel projectId={project.id} />
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Landmark className="w-4 h-4 text-emerald-600" /> Record investor payment
+              <Landmark className="w-4 h-4 text-emerald-600" /> Source payment records
             </h2>
             <p className="text-xs text-slate-500">
-              Record a confirmed payment into the designated trust account. This creates a ledger
-              transaction; it does not acknowledge an investor payment automatically.
+              Investor payments are captured by the originating application and applied here
+              automatically. This workspace no longer records or acknowledges investor payments
+              manually, so the ledger and the source application stay aligned.
             </p>
-            <RecordInflowForm
-              projectId={project.id}
-              accounts={project.bankAccounts.map((a: any) => ({
-                id: a.id,
-                type: a.type,
-                accountNumber: a.accountNumber,
-              }))}
-            />
+            <p className="text-[11px] text-slate-500">
+              {paymentsAreFromSource
+                ? `${allPayments.length} payment record${allPayments.length === 1 ? "" : "s"} received from the source application.`
+                : "Source payments are currently unavailable. Local confirmation records are shown for reference only."}
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Milestone disbursements below are trustee-authorised payments and remain subject to
+              the review workflow.
+            </p>
           </div>
         </div>
       </section>
@@ -518,7 +612,7 @@ export default async function ProjectWorkspacePage({
         <SectionHeader
           icon={<FileText className="w-4 h-4 text-sky-600" />}
           title="Documents & project information"
-          description="Monitor reports, milestone evidence, invoices, certificates, payment receipts and investor communications."
+          description="Monitor reports, milestone evidence, invoices, certificates and payment receipts. Communications live in the dedicated Communications section."
         />
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           {documents.length === 0 ? (
@@ -596,11 +690,25 @@ export default async function ProjectWorkspacePage({
             )}
           </div>
 
-          <div className="mt-5 border-t border-slate-200 pt-4">
-            <h3 className="text-sm font-bold text-slate-900 mb-2">Investor communications</h3>
-            <CommunicationsPanel notifications={notifications} />
-          </div>
         </div>
+      </section>
+
+      <section id="communications" className="scroll-mt-20 space-y-3">
+        <SectionHeader
+          icon={<MessageSquare className="w-4 h-4 text-violet-600" />}
+          title="Communications"
+          description="Send investor notifications with delivery history, and keep a structured conversation with the developer."
+        />
+        <CommunicationsCentre
+          projectId={project.id}
+          announcements={announcements}
+          messages={developerMessages}
+          milestones={project.drawdownRequests.map((request: any) => ({
+            id: request.id,
+            name: GATE_LABELS[request.gateType as keyof typeof GATE_LABELS],
+          }))}
+          investorCount={investorsWithPayments.length}
+        />
       </section>
 
       <section id="activity" className="scroll-mt-20 space-y-3">

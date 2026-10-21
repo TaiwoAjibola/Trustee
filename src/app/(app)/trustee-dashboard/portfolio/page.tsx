@@ -2,7 +2,6 @@
 import { prisma } from "@/lib/prisma";
 import { KycStatus, ProjectStatus } from "@prisma/client";
 import { formatNaira } from "@/lib/utils";
-import { InvestorPaymentAck } from "@/components/InvestorPaymentAck";
 import { StatusBadge } from "@/components/Badges";
 import { CheckCircle2 } from "lucide-react";
 
@@ -25,7 +24,7 @@ export default async function PortfolioPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const pendingPayments = projects.flatMap((p) =>
+  const awaitingConfirmation = projects.flatMap((p) =>
     p.investors.flatMap((investor: any) =>
       (investor.payments ?? [])
         .filter((payment: any) => payment.status !== "ACKNOWLEDGED")
@@ -50,38 +49,39 @@ export default async function PortfolioPage() {
         </p>
       </div>
 
-      {/* Pending investor payments banner */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-amber-700">
-          Investor Payments Awaiting Acknowledgement ({pendingPayments.length})
+      {/* Source-confirmed investor payments */}
+      <div className="bg-sky-500/10 border border-sky-500/30 rounded-xl p-6">
+        <h2 className="text-sm font-semibold text-sky-800">
+          Investor payments confirmed by source
         </h2>
         <p className="text-xs text-slate-600 mt-1">
-          Each confirmed investor payment must be acknowledged, receipted and notified individually.
+          Payment records and receipts are applied automatically from the originating application.
+          Confirmations, receipts and investor notifications do not require a manual trustee action.
         </p>
-        {pendingPayments.length === 0 ? (
-          <p className="text-xs text-slate-500 mt-2">All received investor payments acknowledged.</p>
+        {awaitingConfirmation.length === 0 ? (
+          <p className="text-xs text-emerald-700 mt-2">
+            All source payments have been confirmed, receipted and notified.
+          </p>
         ) : (
-          <ul className="mt-3 space-y-2 text-sm text-slate-700">
-            {pendingPayments.map((payment: any) => (
-              <li
-                key={payment.id}
-                className="flex flex-wrap items-center justify-between gap-2 max-w-2xl"
-              >
-                <span>
+          <div className="mt-3 space-y-1.5 text-xs text-slate-700">
+            <p className="font-semibold text-amber-700">
+              {awaitingConfirmation.length} payment
+              {awaitingConfirmation.length === 1 ? "" : "s"} awaiting source confirmation
+            </p>
+            <ul className="space-y-1">
+              {awaitingConfirmation.map((payment: any) => (
+                <li key={payment.id}>
                   {payment.investorName} · {payment.projectName}
-                  <span className="block text-[11px] text-slate-500 font-mono">
+                  <span className="ml-2 font-mono text-[11px] text-slate-500">
                     {payment.reference} · {formatNaira(payment.amount)}
                   </span>
-                </span>
-                <InvestorPaymentAck
-                  investorId={payment.investorId}
-                  paymentId={payment.id}
-                  paymentStatus={payment.status}
-                  label="Acknowledge & send receipt"
-                />
-              </li>
-            ))}
-          </ul>
+                  <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-700">
+                    Awaiting confirmation
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 
@@ -149,7 +149,7 @@ export default async function PortfolioPage() {
                         <th className="px-4 py-3">Paid</th>
                         <th className="px-4 py-3">Outstanding</th>
                         <th className="px-4 py-3">KYC</th>
-                        <th className="px-4 py-3 text-right">Payment action</th>
+                        <th className="px-4 py-3 text-right">Payment status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -192,22 +192,15 @@ export default async function PortfolioPage() {
                                 <span className="text-xs text-slate-500">No payments</span>
                               ) : pending.length === 0 ? (
                                 <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
-                                  <CheckCircle2 className="w-4 h-4 mr-1" /> Acknowledged
+                                  <CheckCircle2 className="w-4 h-4 mr-1" /> Confirmed & receipted
                                 </span>
                               ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                   {pending.map((payment: any) => (
-                                    <div key={payment.id}>
-                                      <p className="text-[11px] text-slate-500 font-mono">
-                                        {payment.reference} · {formatNaira(payment.amount)}
-                                      </p>
-                                      <InvestorPaymentAck
-                                        investorId={inv.id}
-                                        paymentId={payment.id}
-                                        paymentStatus={payment.status}
-                                        label="Acknowledge & send receipt"
-                                      />
-                                    </div>
+                                    <p key={payment.id} className="text-[11px] text-amber-700">
+                                      {payment.reference} · {formatNaira(payment.amount)} · awaiting
+                                      source confirmation
+                                    </p>
                                   ))}
                                 </div>
                               )}

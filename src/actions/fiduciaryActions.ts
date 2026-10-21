@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { calculateSlaDeadline } from "@/lib/slaEngine";
 import {
   DrawdownStatus,
-  GateType,
   ProjectStatus,
   AccountType,
   DocumentType,
@@ -29,73 +28,6 @@ async function currentActor() {
     name: session.user.name ?? "System",
     role: (session.user as unknown as { role: Role }).role,
   };
-}
-
-export async function submitDrawdownRequest(data: {
-  projectId: string;
-  gateType: GateType;
-  requestedAmount: number;
-}) {
-  const actor = await currentActor();
-  if (actor.role !== Role.FIDUCIARY_EXEC) {
-    throw new Error("Only a Trustee may submit a milestone payment request.");
-  }
-  if (!Number.isFinite(data.requestedAmount) || data.requestedAmount <= 0) {
-    throw new Error("Enter a milestone amount greater than zero.");
-  }
-  const cp = await prisma.conditionPrecedent.findUnique({
-    where: { projectId: data.projectId },
-  });
-
-  if (!cp || !cp.clearedForActivation) {
-    throw new Error(
-      "Cannot submit a milestone: Conditions Precedent (Gate G0) are not fully cleared."
-    );
-  }
-
-  const slaDeadline = calculateSlaDeadline(new Date(), 4);
-
-  const request = await prisma.drawdownRequest.create({
-    data: {
-      projectId: data.projectId,
-      requestedById: actor.id,
-      gateType: data.gateType,
-      requestedAmount: data.requestedAmount,
-      slaDeadline,
-      status: DrawdownStatus.SUBMITTED,
-    },
-  });
-
-  const assignedMonitors = await prisma.projectMonitor.findMany({
-    where: { projectId: data.projectId, removedAt: null },
-  });
-  for (const appointment of assignedMonitors) {
-    await prisma.monitorAssignment.create({
-      data: {
-        drawdownRequestId: request.id,
-        projectId: data.projectId,
-        monitorId: appointment.monitorId,
-        assignedById: actor.id,
-        phase: data.gateType,
-        status: "ASSIGNED",
-        initiatedAt: new Date(),
-        assignedAt: new Date(),
-      },
-    });
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      projectId: data.projectId,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "MILESTONE_SUBMITTED",
-      details: `Milestone payment request submitted for ${data.gateType} at ₦${data.requestedAmount.toLocaleString()}.`,
-    },
-  });
-
-  revalidatePath("/trustee-dashboard");
-  return request;
 }
 
 /**
@@ -723,74 +655,6 @@ export async function vacateLien(projectId: string) {
   return cp;
 }
 
-export async function recordInflow(data: {
-  projectId: string;
-  bankAccountId: string;
-  type: CashTxnType;
-  amount: number;
-  note?: string;
-}) {
-  const actor = await currentActor();
-  if (actor.role !== Role.FIDUCIARY_EXEC) {
-    throw new Error("Only a Trustee may record an investor payment.");
-  }
-  if (!Number.isFinite(data.amount) || data.amount <= 0) {
-    throw new Error("Amount must be positive.");
-  }
-  if (
-    data.type !== CashTxnType.PROJECT_INVESTMENT_SUBSCRIPTION &&
-    data.type !== CashTxnType.ASSET_PURCHASE_COLLECTION
-  ) {
-    throw new Error("Select a valid investor payment type.");
-  }
-  const account = await prisma.bankAccount.findUnique({
-    where: { id: data.bankAccountId },
-  });
-  if (!account || account.projectId !== data.projectId) {
-    throw new Error("Select a bank account that belongs to this project.");
-  }
-
-  const receiptRef = `FT-RCPT-${Date.now().toString(36).toUpperCase()}`;
-  const txn = await prisma.cashTransaction.create({
-    data: {
-      projectId: data.projectId,
-      bankAccountId: data.bankAccountId,
-      type: data.type,
-      direction: CashTxnDirection.IN,
-      amount: data.amount,
-      counterparty:
-        data.type === CashTxnType.PROJECT_INVESTMENT_SUBSCRIPTION
-          ? "Project investor payment"
-          : "Asset purchase collection",
-      method: "Bank transfer",
-      status: "Completed",
-      receiptRef,
-      referenceId: receiptRef,
-      note: data.note ?? "Payment received into the designated trust account.",
-      recordedById: actor.id,
-      recordedAt: new Date(),
-    },
-  });
-
-  await prisma.bankAccount.update({
-    where: { id: data.bankAccountId },
-    data: { balance: { increment: data.amount } },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      projectId: data.projectId,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "INVESTOR_PAYMENT_RECEIVED",
-      details: `Investor payment of ₦${data.amount.toLocaleString()} recorded in the designated trust account. Receipt ${receiptRef}.`,
-    },
-  });
-
-  revalidatePath(`/trustee-dashboard/project/${data.projectId}`);
-  return txn;
-}
-
 export async function executeInvestorDistribution(projectId: string) {
   const actor = await currentActor();
   if (actor.role !== Role.FIDUCIARY_EXEC) {
@@ -854,87 +718,12 @@ export async function executeInvestorDistribution(projectId: string) {
 
 /* ---------------------------------------------------------------------------
  * Trustee-facing capital & developer workflow
- *   1. See projects + investors
- *   2. Acknowledge confirmed investor payments and issue receipts
- *   3. Assign project monitors (project-level, not per milestone)
- *   4. Review monitor reports and decide on milestones
- *   5. Record milestone payments separately after approval
+ *   1. See projects + investors, with payments sourced from the originating application
+ *   2. Assign project monitors (project-level, not per milestone)
+ *   3. Review monitor reports and decide on milestones
+ *   4. Record milestone payments separately after approval
+ *   5. Send investor announcements and developer messages from the Communications centre
  * ------------------------------------------------------------------------- */
-
-export async function acknowledgeInvestorPayment(investorId: string, paymentId?: string) {
-  const actor = await currentActor();
-  if (actor.role !== Role.FIDUCIARY_EXEC) {
-    throw new Error("Only a Trustee may acknowledge an investor payment.");
-  }
-  const inv = await prisma.investor.findUnique({ where: { id: investorId } });
-  if (!inv) throw new Error("Investor not found.");
-
-  const payments = await prisma.investorPayment.findMany({
-    where: paymentId
-      ? { id: paymentId, investorId }
-      : { investorId, status: "RECEIVED" },
-  });
-
-  if (payments.length === 0) {
-    throw new Error("This investor payment has already been acknowledged.");
-  }
-
-  let acknowledgedTotal = 0;
-  const acknowledgedAt = new Date();
-  for (const payment of payments) {
-    if (payment.status === "ACKNOWLEDGED") continue;
-    const receiptRef = `FT-${String(payment.reference).replace(/[^A-Za-z0-9]/g, "")}`;
-    await prisma.investorPayment.update({
-      where: { id: payment.id },
-      data: {
-        status: "ACKNOWLEDGED",
-        acknowledgedAt,
-        acknowledgedById: actor.id,
-        receiptRef,
-        notificationStatus: "SENT",
-        notificationSentAt: acknowledgedAt,
-      },
-    });
-    acknowledgedTotal += payment.amount;
-
-    await prisma.notification.create({
-      data: {
-        projectId: payment.projectId,
-        recipientType: "INVESTOR",
-        recipientRef: inv.id,
-        title: "Investor Payment Acknowledged",
-        body: `First Trustees has acknowledged your payment of ₦${payment.amount.toLocaleString()} (reference ${payment.reference}). Receipt ${receiptRef} has been issued.`,
-        relatedDrawdownId: null,
-        createdAt: acknowledgedAt,
-      },
-    });
-  }
-
-  if (acknowledgedTotal === 0) {
-    throw new Error("This investor payment has already been acknowledged.");
-  }
-
-  const updated = await prisma.investor.update({
-    where: { id: investorId },
-    data: { paymentStatus: "ACKNOWLEDGED", acknowledgedAt },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      projectId: updated.projectId,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "INVESTOR_PAYMENT_ACKNOWLEDGED",
-      details: `Trustee acknowledged ₦${acknowledgedTotal.toLocaleString()} received from ${updated.name}. Acknowledgement notification sent to the investor application.`,
-      timestamp: acknowledgedAt,
-    },
-  });
-
-  revalidatePath("/trustee-dashboard");
-  revalidatePath("/trustee-dashboard/portfolio");
-  revalidatePath(`/trustee-dashboard/project/${updated.projectId}`);
-  return updated;
-}
 
 export async function approveMilestone(drawdownRequestId: string, comment = "") {
   const actor = await currentActor();
@@ -1237,3 +1026,197 @@ export async function rejectMilestone(drawdownRequestId: string, reason: string)
   return updated;
 }
 
+
+export async function sendInvestorAnnouncement(data: {
+  projectId: string;
+  subject: string;
+  message: string;
+  recipientScope: "ALL" | "FUNDED" | "OUTSTANDING";
+}) {
+  const actor = await currentActor();
+  if (actor.role !== Role.FIDUCIARY_EXEC) {
+    throw new Error("Only a Trustee may send investor communications.");
+  }
+  const subject = data.subject.trim();
+  const message = data.message.trim();
+  if (subject.length < 3) throw new Error("Enter a subject for the investor announcement.");
+  if (message.length < 10) {
+    throw new Error("Enter a message of at least 10 characters.");
+  }
+  if (!["ALL", "FUNDED", "OUTSTANDING"].includes(data.recipientScope)) {
+    throw new Error("Select a valid recipient group.");
+  }
+
+  const investors = await prisma.investor.findMany({
+    where: { projectId: data.projectId },
+    include: { payments: true },
+  });
+  const paidByInvestor = (investor: { payments?: { amount: number }[] }) =>
+    (investor.payments ?? []).reduce((sum, payment) => sum + payment.amount, 0);
+
+  const recipients = investors.filter((investor: { committedAmount: number; payments?: { amount: number }[] }) => {
+    if (data.recipientScope === "ALL") return true;
+    const paid = paidByInvestor(investor);
+    if (data.recipientScope === "FUNDED") return paid > 0;
+    return paid < investor.committedAmount;
+  });
+
+  if (recipients.length === 0) {
+    throw new Error("No investors match the selected recipient group.");
+  }
+
+  const deliverable = recipients.filter((investor: { email: string | null }) => investor.email);
+  const failed = recipients.length - deliverable.length;
+  const status = failed === 0 ? "SENT" : deliverable.length === 0 ? "FAILED" : "PARTIAL";
+  const sentAt = new Date();
+
+  const announcement = await prisma.investorAnnouncement.create({
+    data: {
+      projectId: data.projectId,
+      subject,
+      message,
+      recipientScope: data.recipientScope,
+      recipientCount: recipients.length,
+      deliveredCount: deliverable.length,
+      failedCount: failed,
+      status,
+      sentById: actor.id,
+      sentByName: actor.name,
+      sentAt,
+      lastAttemptAt: sentAt,
+      createdAt: sentAt,
+    },
+  });
+
+  for (const investor of deliverable) {
+    await prisma.notification.create({
+      data: {
+        projectId: data.projectId,
+        recipientType: "INVESTOR",
+        recipientRef: (investor as { id: string }).id,
+        title: subject,
+        body: message,
+        relatedDrawdownId: null,
+        createdAt: sentAt,
+      },
+    });
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      projectId: data.projectId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "INVESTOR_ANNOUNCEMENT_SENT",
+      details: `Investor announcement "${subject}" sent to ${deliverable.length} of ${recipients.length} investors for scope ${data.recipientScope}. Delivery status ${status}.`,
+      timestamp: sentAt,
+    },
+  });
+
+  revalidatePath(`/trustee-dashboard/project/${data.projectId}`);
+  revalidatePath("/reports");
+  return announcement;
+}
+
+export async function retryInvestorAnnouncement(announcementId: string) {
+  const actor = await currentActor();
+  if (actor.role !== Role.FIDUCIARY_EXEC) {
+    throw new Error("Only a Trustee may retry investor communications.");
+  }
+  const announcement = await prisma.investorAnnouncement.findUnique({
+    where: { id: announcementId },
+  });
+  if (!announcement) throw new Error("Announcement not found.");
+  if (announcement.status === "SENT") {
+    throw new Error("This announcement was already delivered. Retry is not required.");
+  }
+
+  const investors = await prisma.investor.findMany({
+    where: { projectId: announcement.projectId },
+    include: { payments: true },
+  });
+  const paidByInvestor = (investor: { payments?: { amount: number }[] }) =>
+    (investor.payments ?? []).reduce((sum, payment) => sum + payment.amount, 0);
+  const recipients = investors.filter((investor: { committedAmount: number; payments?: { amount: number }[] }) => {
+    if (announcement.recipientScope === "ALL") return true;
+    const paid = paidByInvestor(investor);
+    if (announcement.recipientScope === "FUNDED") return paid > 0;
+    return paid < investor.committedAmount;
+  });
+  const deliverable = recipients.filter((investor: { email: string | null }) => investor.email).length;
+  const failed = recipients.length - deliverable;
+  const status = failed === 0 ? "SENT" : deliverable === 0 ? "FAILED" : "PARTIAL";
+
+  const updated = await prisma.investorAnnouncement.update({
+    where: { id: announcementId },
+    data: {
+      recipientCount: recipients.length,
+      deliveredCount: deliverable,
+      failedCount: failed,
+      status,
+      lastAttemptAt: new Date(),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      projectId: announcement.projectId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "INVESTOR_ANNOUNCEMENT_RETRIED",
+      details: `Delivery retried for "${announcement.subject}". ${deliverable} delivered, ${failed} failed. No duplicate announcement was created.`,
+    },
+  });
+
+  revalidatePath(`/trustee-dashboard/project/${announcement.projectId}`);
+  revalidatePath("/reports");
+  return updated;
+}
+
+export async function sendDeveloperMessage(data: {
+  projectId: string;
+  body: string;
+  drawdownRequestId?: string | null;
+}) {
+  const actor = await currentActor();
+  if (actor.role !== Role.FIDUCIARY_EXEC) {
+    throw new Error("Only a Trustee may send messages to the developer.");
+  }
+  const body = data.body.trim();
+  if (body.length < 2) throw new Error("Enter a message for the developer.");
+
+  if (data.drawdownRequestId) {
+    const milestone = await prisma.drawdownRequest.findUnique({
+      where: { id: data.drawdownRequestId },
+    });
+    if (!milestone || milestone.projectId !== data.projectId) {
+      throw new Error("Select a milestone that belongs to this project.");
+    }
+  }
+
+  const message = await prisma.developerMessage.create({
+    data: {
+      projectId: data.projectId,
+      senderId: actor.id,
+      senderName: actor.name,
+      senderRole: "TRUSTEE",
+      body,
+      drawdownRequestId: data.drawdownRequestId ?? null,
+      sourceEventId: null,
+      createdAt: new Date(),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      projectId: data.projectId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "DEVELOPER_MESSAGE_SENT",
+      details: `Trustee sent a message to the developer${data.drawdownRequestId ? ` about ${data.drawdownRequestId}` : ""}.`,
+    },
+  });
+
+  revalidatePath(`/trustee-dashboard/project/${data.projectId}`);
+  return message;
+}
