@@ -29,7 +29,7 @@ const ROLE_PROFILE: Record<
       { label: "Approve or reject milestone funding", ok: true },
       { label: "Request additional information (deficiency)", ok: true },
       { label: "Release funds after approval", ok: true },
-      { label: "Submit drawdown requests (Gates G1–G11)", ok: true },
+      { label: "Submit milestone payment requests (Gates G1–G11)", ok: true },
       { label: "Vacate lien & execute investor distribution (G10, 24% p.a.)", ok: true },
     ],
   },

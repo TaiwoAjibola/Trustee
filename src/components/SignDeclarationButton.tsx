@@ -27,23 +27,26 @@ export function SignDeclarationButton({
   }
 
   return (
-    <button
-      onClick={() =>
-        startTransition(async () => {
-          setError(null);
-          try {
-            await signIndependenceDeclaration({ projectId, monitorId });
-            router.refresh();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed.");
-          }
-        })
-      }
-      disabled={pending}
-      className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-60"
-    >
-      <FileSignature className="w-3.5 h-3.5" />
-      {pending ? "Signing…" : "Sign Independence Declaration"}
-    </button>
+    <div className="space-y-1">
+      <button
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            try {
+              await signIndependenceDeclaration({ projectId, monitorId });
+              router.refresh();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Failed.");
+            }
+          })
+        }
+        disabled={pending}
+        className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-60"
+      >
+        <FileSignature className="w-3.5 h-3.5" />
+        {pending ? "Signing…" : "Sign Independence Declaration"}
+      </button>
+      {error && <p className="text-[11px] text-rose-600">{error}</p>}
+    </div>
   );
 }

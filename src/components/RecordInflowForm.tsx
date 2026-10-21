@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { recordInflow } from "@/actions/fiduciaryActions";
 import { CashTxnType } from "@prisma/client";
-import { Banknote } from "lucide-react";
 
 export function RecordInflowForm({
   projectId,
@@ -38,7 +37,7 @@ export function RecordInflowForm({
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs text-slate-500 uppercase tracking-wider">Trust Account</label>
+          <label className="text-xs text-slate-500 uppercase tracking-wider">Account</label>
           <select
             value={bankAccountId}
             onChange={(e) => setBankAccountId(e.target.value)}
@@ -52,17 +51,17 @@ export function RecordInflowForm({
           </select>
         </div>
         <div>
-          <label className="text-xs text-slate-500 uppercase tracking-wider">Inflow Type</label>
+          <label className="text-xs text-slate-500 uppercase tracking-wider">Payment type</label>
           <select
             value={type}
             onChange={(e) => setType(e.target.value as CashTxnType)}
             className="mt-1 w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
           >
             <option value={CashTxnType.PROJECT_INVESTMENT_SUBSCRIPTION}>
-              Project Investment Subscription
+              Investor subscription
             </option>
             <option value={CashTxnType.ASSET_PURCHASE_COLLECTION}>
-              Asset Purchase Collection
+              Asset purchase collection
             </option>
           </select>
         </div>
@@ -83,7 +82,7 @@ export function RecordInflowForm({
         disabled={pending || amount <= 0}
         className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 text-sm disabled:opacity-60"
       >
-        {pending ? "Recording…" : "Record & Safeguard Inflow"}
+        {pending ? "Recording…" : "Record payment received"}
       </button>
     </form>
   );

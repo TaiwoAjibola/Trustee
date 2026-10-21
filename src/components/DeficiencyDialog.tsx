@@ -48,7 +48,7 @@ export function DeficiencyDialog({ drawdownRequestId }: { drawdownRequestId: str
               Consolidated Deficiency Notice
             </h3>
             <p className="text-xs text-slate-500">
-              Per fiduciary rule, only ONE consolidated notice may be issued per drawdown
+              Per fiduciary rule, only ONE consolidated notice may be issued per milestone
               request.
             </p>
             <textarea

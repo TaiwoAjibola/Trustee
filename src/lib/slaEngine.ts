@@ -22,9 +22,9 @@ export type SlaStatus = {
   label: string;
 };
 
-export function getSlaStatus(deadline: Date): SlaStatus {
+export function getSlaStatus(deadline: Date | string): SlaStatus {
   const now = new Date();
-  const diffMs = deadline.getTime() - now.getTime();
+  const diffMs = new Date(deadline).getTime() - now.getTime();
   const hoursRemaining = Math.round(diffMs / (1000 * 60 * 60));
 
   if (diffMs < 0) {

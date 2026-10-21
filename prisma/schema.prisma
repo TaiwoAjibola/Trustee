@@ -75,77 +75,77 @@ enum KycStatus {
 }
 
 model User {
-  id               String            @id @default(cuid())
-  name             String
-  email            String            @unique
-  hashedPassword   String
-  role             Role
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  drawdownRequests DrawdownRequest[] @relation("RequestedBy")
-  deficiencyNotices DeficiencyNotice[] @relation("IssuedBy")
-  certificates     MonitorCertificate[]
-  auditLogs        AuditLog[]        @relation("AuditActor")
-  monitorCredential MonitorCredential? @relation("MonitorCredentialUser")
-  appointedProjects ProjectMonitor[]   @relation("ProjectMonitorMonitor")
+  id                String               @id @default(cuid())
+  name              String
+  email             String               @unique
+  hashedPassword    String
+  role              Role
+  isActive          Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  drawdownRequests  DrawdownRequest[]    @relation("RequestedBy")
+  deficiencyNotices DeficiencyNotice[]   @relation("IssuedBy")
+  certificates      MonitorCertificate[]
+  auditLogs         AuditLog[]           @relation("AuditActor")
+  monitorCredential MonitorCredential?   @relation("MonitorCredentialUser")
+  appointedProjects ProjectMonitor[]     @relation("ProjectMonitorMonitor")
 }
 
 model Project {
-  id                  String               @id @default(cuid())
-  name                String
-  code                String               @unique
-  status              ProjectStatus        @default(PENDING_CP)
-  totalBudget         Float
-  fundingCloseDate    DateTime?
-  targetCompletion    DateTime
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  bankAccounts        BankAccount[]
-  conditionPrecedent  ConditionPrecedent?
-  drawdownRequests    DrawdownRequest[]
-  auditLogs           AuditLog[]
-  cashTransactions    CashTransaction[]
-  projectMonitors     ProjectMonitor[]
+  id                 String              @id @default(cuid())
+  name               String
+  code               String              @unique
+  status             ProjectStatus       @default(PENDING_CP)
+  totalBudget        Float
+  fundingCloseDate   DateTime?
+  targetCompletion   DateTime
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  bankAccounts       BankAccount[]
+  conditionPrecedent ConditionPrecedent?
+  drawdownRequests   DrawdownRequest[]
+  auditLogs          AuditLog[]
+  cashTransactions   CashTransaction[]
+  projectMonitors    ProjectMonitor[]
 }
 
 model Developer {
-  id            String   @id @default(cuid())
-  projectId     String
-  name          String
-  contactEmail  String?
-  pocName       String?
-  pocRole       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  contactEmail String?
+  pocName      String?
+  pocRole      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model ConditionPrecedent {
-  id                          String    @id @default(cuid())
-  projectId                   String    @unique
-  project                     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  masterScheduleExecuted      Boolean   @default(false)
-  landRegistryLienRegistered  Boolean   @default(false)
-  boqApproved                 Boolean   @default(false)
-  minimumFundingMet           Boolean   @default(false)
-  insuranceVerified           Boolean   @default(false)
-  clearedForActivation        Boolean   @default(false)
-  activatedAt                 DateTime?
-  lienVacated                 Boolean   @default(false)
-  lienVacatedAt               DateTime?
+  id                         String    @id @default(cuid())
+  projectId                  String    @unique
+  project                    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  masterScheduleExecuted     Boolean   @default(false)
+  landRegistryLienRegistered Boolean   @default(false)
+  boqApproved                Boolean   @default(false)
+  minimumFundingMet          Boolean   @default(false)
+  insuranceVerified          Boolean   @default(false)
+  clearedForActivation       Boolean   @default(false)
+  activatedAt                DateTime?
+  lienVacated                Boolean   @default(false)
+  lienVacatedAt              DateTime?
 }
 
 model BankAccount {
-  id            String      @id @default(cuid())
-  projectId     String
-  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type          AccountType
-  accountNumber String      @unique
-  bankName      String
-  balance       Float       @default(0.0)
-  currency      String      @default("NGN")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id               String            @id @default(cuid())
+  projectId        String
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type             AccountType
+  accountNumber    String            @unique
+  bankName         String
+  balance          Float             @default(0.0)
+  currency         String            @default("NGN")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   cashTransactions CashTransaction[]
 }
 
@@ -161,6 +161,16 @@ model DrawdownRequest {
   estimateAtCompletion Float?
   submissionDate       DateTime             @default(now())
   slaDeadline          DateTime
+  reviewComment        String?              @db.Text
+  reviewedById         String?
+  reviewedAt           DateTime?
+  paymentRecipient     String?
+  paymentMethod        String?
+  paymentReference     String?
+  paymentDate          DateTime?
+  paymentNotes         String?              @db.Text
+  paidById             String?
+  paidAt               DateTime?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   deficiencyNotices    DeficiencyNotice[]
@@ -205,64 +215,130 @@ model DocumentVault {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  actorId     String
-  actor       User     @relation("AuditActor", fields: [actorId], references: [id])
-  actorName   String
-  action      String
-  details     String   @db.Text
-  timestamp   DateTime @default(now())
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User     @relation("AuditActor", fields: [actorId], references: [id])
+  actorName String
+  action    String
+  details   String   @db.Text
+  timestamp DateTime @default(now())
 }
 
 /// Independent Monitor professional standing (COREN/NIQS/ARCON, PI insurance, experience)
 model MonitorCredential {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  user               User     @relation("MonitorCredentialUser", fields: [userId], references: [id], onDelete: Cascade)
-  professionalBody   String /// e.g. COREN, NIQS, ARCON
-  registrationNumber String
-  experienceSummary  String?  @db.Text
-  piInsuranceVerified Boolean @default(false)
-  piInsuranceDocUrl  String?
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation("MonitorCredentialUser", fields: [userId], references: [id], onDelete: Cascade)
+  professionalBody    String /// e.g. COREN, NIQS, ARCON
+  registrationNumber  String
+  experienceSummary   String?   @db.Text
+  piInsuranceVerified Boolean   @default(false)
+  piInsuranceDocUrl   String?
   kycStatus           KycStatus @default(PENDING)
-  kycNote             String?  @db.Text
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  kycNote             String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 /// Per-project Monitor appointment + signed independence & conflict declaration
 model ProjectMonitor {
-  id                        String   @id @default(cuid())
-  projectId                 String
-  project                   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  monitorId                 String
-  monitor                   User     @relation("ProjectMonitorMonitor", fields: [monitorId], references: [id])
-  appointedById             String
-  eligibilityCriteriaMet    Boolean  @default(false)
-  independenceDeclarationSigned Boolean @default(false)
-  declarationDocUrl         String?
-  appointedAt               DateTime @default(now())
+  id                            String    @id @default(cuid())
+  projectId                     String
+  project                       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  monitorId                     String
+  monitor                       User      @relation("ProjectMonitorMonitor", fields: [monitorId], references: [id])
+  appointedById                 String
+  eligibilityCriteriaMet        Boolean   @default(false)
+  independenceDeclarationSigned Boolean   @default(false)
+  declarationDocUrl             String?
+  appointedAt                   DateTime  @default(now())
+  removedAt                     DateTime?
 
   @@unique([projectId, monitorId])
 }
 
 /// Independent cash ledger: subscriptions, asset-purchase collections, drawdowns, distributions
 model CashTransaction {
-  id               String   @id @default(cuid())
-  projectId        String
-  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  bankAccountId    String?
-  bankAccount      BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
-  type             CashTxnType
-  direction        CashTxnDirection
-  amount           Float
-  currency         String   @default("NGN")
-  referenceId      String?
-  note             String?  @db.Text
-  recordedById     String
-  recordedAt       DateTime @default(now())
+  id            String           @id @default(cuid())
+  projectId     String
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  bankAccountId String?
+  bankAccount   BankAccount?     @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  type          CashTxnType
+  direction     CashTxnDirection
+  amount        Float
+  currency      String           @default("NGN")
+  referenceId   String?
+  counterparty  String?
+  method        String?
+  status        String?          @default("COMPLETED")
+  receiptRef    String?
+  note          String?          @db.Text
+  recordedById  String
+  recordedAt    DateTime         @default(now())
+}
+
+/// A reported/verified payment from an investor, separate from the investment commitment.
+model InvestorPayment {
+  id                 String    @id @default(cuid())
+  projectId          String
+  investorId         String
+  amount             Float
+  currency           String    @default("NGN")
+  method             String    @default("BANK_TRANSFER")
+  reference          String    @unique
+  status             String    @default("RECEIVED")
+  paidAt             DateTime
+  receivedAt         DateTime  @default(now())
+  acknowledgedAt     DateTime?
+  acknowledgedById   String?
+  receiptRef         String?
+  notificationStatus String    @default("PENDING")
+  notificationSentAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+/// Appointed-monitor work item for a specific milestone. Kept for history.
+model MonitorAssignment {
+  id                String    @id @default(cuid())
+  drawdownRequestId String
+  projectId         String
+  monitorId         String
+  assignedById      String?
+  phase             GateType
+  status            String    @default("ASSIGNED")
+  initiatedAt       DateTime  @default(now())
+  assignedAt        DateTime  @default(now())
+  confirmedAt       DateTime?
+  notes             String?   @db.Text
+}
+
+model Investor {
+  id              String    @id @default(cuid())
+  projectId       String
+  name            String
+  email           String?
+  committedAmount Float
+  kycStatus       KycStatus @default(PENDING)
+  paymentStatus   String    @default("RECEIVED")
+  paidAt          DateTime?
+  acknowledgedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  projectId         String
+  recipientType     String
+  recipientRef      String
+  title             String
+  body              String   @db.Text
+  relatedDrawdownId String?
+  createdAt         DateTime @default(now())
 }
 
 enum CashTxnType {

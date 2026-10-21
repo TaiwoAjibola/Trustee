@@ -8,9 +8,13 @@ import { acknowledgeInvestorPayment } from "@/actions/fiduciaryActions";
 export function InvestorPaymentAck({
   investorId,
   paymentStatus,
+  paymentId,
+  label = "Acknowledge payment",
 }: {
   investorId: string;
   paymentStatus: string;
+  paymentId?: string;
+  label?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -29,7 +33,7 @@ export function InvestorPaymentAck({
             setError(null);
             startTransition(async () => {
               try {
-                await acknowledgeInvestorPayment(investorId);
+                await acknowledgeInvestorPayment(investorId, paymentId);
                 router.refresh();
               } catch (err) {
                 setError(err instanceof Error ? err.message : "Action failed.");
@@ -40,7 +44,7 @@ export function InvestorPaymentAck({
           className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-60"
         >
           {pending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-          Acknowledge Payment
+          {label}
         </button>
       )}
       {error && <span className="text-xs text-rose-600">{error}</span>}

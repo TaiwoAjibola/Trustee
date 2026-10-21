@@ -9,7 +9,6 @@ export function MonitorEvidenceUploader({ drawdownRequestId }: { drawdownRequest
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState("");
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,7 +18,6 @@ export function MonitorEvidenceUploader({ drawdownRequestId }: { drawdownRequest
     startTransition(async () => {
       try {
         await uploadMonitorEvidence(formData);
-        setFileName("");
         form.reset();
         router.refresh();
       } catch (err) {
@@ -36,7 +34,6 @@ export function MonitorEvidenceUploader({ drawdownRequestId }: { drawdownRequest
           name="file"
           accept="image/*,video/*"
           required
-          onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
           className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-700"
         />
         <button

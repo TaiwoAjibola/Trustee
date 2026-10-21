@@ -3,22 +3,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { appointMonitor } from "@/actions/fiduciaryActions";
-import { UserPlus, ChevronDown, ShieldCheck } from "lucide-react";
+import { UserPlus, ChevronDown } from "lucide-react";
 
 export function MonitorAppointmentPanel({
   projectId,
   available,
-  appointments,
 }: {
   projectId: string;
   available: { id: string; name: string; email: string }[];
-  appointments: {
-    monitorId: string;
-    name: string;
-    email: string;
-    eligibilityCriteriaMet: boolean;
-    independenceDeclarationSigned: boolean;
-  }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -52,48 +44,7 @@ export function MonitorAppointmentPanel({
   }
 
   return (
-    <div className="space-y-4">
-      {appointments.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          No monitors appointed yet. Use the selector below to appoint one or more Independent
-          Monitors to this project.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {appointments.map((a) => (
-            <li
-              key={a.monitorId}
-              className="flex items-center justify-between border border-slate-200 rounded-lg px-3 py-2"
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-violet-600" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{a.name}</p>
-                  <p className="text-xs text-slate-500">{a.email}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p
-                  className={`text-xs font-semibold ${
-                    a.eligibilityCriteriaMet ? "text-emerald-600" : "text-rose-600"
-                  }`}
-                >
-                  Eligibility: {a.eligibilityCriteriaMet ? "Met" : "Not met"}
-                </p>
-                <p
-                  className={`text-xs ${
-                    a.independenceDeclarationSigned ? "text-emerald-600" : "text-amber-600"
-                  }`}
-                >
-                  {a.independenceDeclarationSigned ? "Declaration signed" : "Declaration pending"}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Multi-select dropdown */}
+    <div className="space-y-3">
       <div className="relative">
         <button
           type="button"

@@ -15,14 +15,22 @@ export default async function MonitorAssignmentsPage() {
   const session = await getServerSession(authOptions);
   const meId = (session?.user as unknown as { id?: string } | undefined)?.id ?? "";
 
-  const myAppointments = await prisma.projectMonitor.findMany({ where: { monitorId: meId } });
+  const myAppointments = await prisma.projectMonitor.findMany({
+    where: { monitorId: meId, removedAt: null },
+  });
   const appointmentByProject = new Map(myAppointments.map((a) => [a.projectId, a]));
   const appointedProjectIds = myAppointments.map((a) => a.projectId);
 
-  const requests = await prisma.drawdownRequest.findMany({
+  const candidates = await prisma.drawdownRequest.findMany({
     where: {
       projectId: { in: appointedProjectIds },
-      status: { in: [DrawdownStatus.SUBMITTED, DrawdownStatus.DEFICIENT] },
+      status: {
+        in: [
+          DrawdownStatus.SUBMITTED,
+          DrawdownStatus.DEFICIENT,
+          DrawdownStatus.CERTIFIED_BY_MONITOR,
+        ],
+      },
     },
     include: {
       project: true,
@@ -32,6 +40,10 @@ export default async function MonitorAssignmentsPage() {
     },
     orderBy: { submissionDate: "desc" },
   });
+
+  const requests = candidates.filter(
+    (req) => !req.monitorCertificates.some((cert) => cert.monitorId === meId)
+  );
 
   const myAssignments = await prisma.monitorAssignment.findMany({
     where: { monitorId: meId },
@@ -49,16 +61,16 @@ export default async function MonitorAssignmentsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Certification Queue</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">My monitor assignments</h1>
         <p className="text-sm text-slate-500">
-          Verify physical milestones and certify drawdown requests for your appointed projects
+          Visit the site, upload evidence and submit your independent report for each assigned milestone
         </p>
       </div>
 
       {requests.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
           <ClipboardCheck className="w-10 h-10 mx-auto mb-3 text-slate-600" />
-          No drawdown requests awaiting your physical certification.
+          No milestones are awaiting your report.
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -87,7 +99,7 @@ export default async function MonitorAssignmentsPage() {
                 {assignmentByRequest.get(req.id) && (
                   <p className="text-xs text-violet-600 flex items-center gap-1 bg-violet-500/10 border border-violet-500/30 rounded-md px-2 py-1.5">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    Initiated by Trustee to verify phase {GATE_LABELS[assignmentByRequest.get(req.id)!.phase]} before disbursement.
+                    You are assigned to verify phase {GATE_LABELS[assignmentByRequest.get(req.id)!.phase]} before the trustee decision.
                   </p>
                 )}
 

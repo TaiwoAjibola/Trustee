@@ -13,7 +13,7 @@ export default async function MonitorAssetsPage() {
   const meId = (session?.user as unknown as { id?: string } | undefined)?.id ?? "";
 
   const appointments = await prisma.projectMonitor.findMany({
-    where: { monitorId: meId },
+    where: { monitorId: meId, removedAt: null },
     include: {
       project: {
         include: {

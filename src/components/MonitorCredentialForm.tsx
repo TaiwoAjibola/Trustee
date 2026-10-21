@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upsertMonitorCredential } from "@/actions/fiduciaryActions";
-import { ShieldCheck } from "lucide-react";
 
 export function MonitorCredentialForm({
   initial,

@@ -49,14 +49,14 @@ export function SubmitDrawdownForm({ projectId }: { projectId: string }) {
       <form onSubmit={confirm} className="space-y-3">
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm">
           <p className="text-xs uppercase tracking-wider text-slate-500">
-            Review &amp; Confirm Drawdown Request
+            Review &amp; Confirm Milestone Payment Request
           </p>
           <div className="flex justify-between">
-            <span className="text-slate-500">Control Gate</span>
+            <span className="text-slate-500">Milestone</span>
             <span className="font-semibold text-slate-900">{GATE_LABELS[gate]}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Requested Amount</span>
+            <span className="text-slate-500">Milestone amount</span>
             <span className="font-semibold text-slate-900">
               ₦{amount.toLocaleString()}
             </span>
@@ -88,7 +88,7 @@ export function SubmitDrawdownForm({ projectId }: { projectId: string }) {
     <form onSubmit={startReview} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs text-slate-500 uppercase tracking-wider">Gate</label>
+          <label className="text-xs text-slate-500 uppercase tracking-wider">Milestone</label>
           <select
             value={gate}
             onChange={(e) => setGate(e.target.value as GateType)}
@@ -103,7 +103,7 @@ export function SubmitDrawdownForm({ projectId }: { projectId: string }) {
         </div>
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider">
-            Requested (₦)
+            Milestone amount (₦)
           </label>
           <input
             type="number"
@@ -121,7 +121,7 @@ export function SubmitDrawdownForm({ projectId }: { projectId: string }) {
         disabled={amount <= 0}
         className="w-full rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2 text-sm disabled:opacity-60"
       >
-        Review Drawdown Request (Gate G0 required)
+        Review milestone payment request
       </button>
     </form>
   );

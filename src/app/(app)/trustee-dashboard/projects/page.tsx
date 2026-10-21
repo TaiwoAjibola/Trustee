@@ -1,15 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { Role } from "@prisma/client";
 import { formatNaira } from "@/lib/utils";
 import { Building2, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 export default async function ProjectsPage() {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.FIDUCIARY_EXEC;
-
   const projects = await prisma.project.findMany({
     include: { bankAccounts: true, drawdownRequests: true },
     orderBy: { createdAt: "desc" },
@@ -60,7 +54,7 @@ export default async function ProjectsPage() {
                     <p className="font-semibold text-emerald-600">{formatNaira(cashInCustody)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">Drawdowns</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">Milestones</p>
                     <p className="font-semibold text-slate-900">{p.drawdownRequests.length}</p>
                   </div>
                   <div>

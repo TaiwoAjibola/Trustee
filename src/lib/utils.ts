@@ -9,7 +9,7 @@ export function formatNaira(amount: number): string {
   return `₦${Math.round(amount).toLocaleString("en-NG")}`;
 }
 
-export function formatDateTime(date: Date): string {
+export function formatDateTime(date: Date | string): string {
   const d = new Date(date);
   if (isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("en-GB", {

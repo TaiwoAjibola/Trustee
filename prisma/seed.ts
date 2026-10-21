@@ -44,7 +44,7 @@ async function main() {
       experienceSummary:
         "15+ years independent monitoring of mixed-use and residential developments across Lagos and Abuja at comparable scale.",
       piInsuranceVerified: true,
-      piInsuranceDocUrl: "/uploads/pi-insurance-sample.pdf",
+      piInsuranceDocUrl: "/demo/pi-insurance-sample.pdf",
       kycStatus: "UNDER_REVIEW",
     },
   });
@@ -54,19 +54,19 @@ async function main() {
       {
         referenceId: monitor.id,
         documentType: "MONITOR_ID",
-        s3Url: "/uploads/monitor-id-sample.pdf",
+        s3Url: "/demo/monitor-id-sample.pdf",
         fileName: "National ID - Engr. Kabir.pdf",
       },
       {
         referenceId: monitor.id,
         documentType: "PROFESSIONAL_LICENSE",
-        s3Url: "/uploads/professional-license-sample.pdf",
+        s3Url: "/demo/professional-license-sample.pdf",
         fileName: "COREN License Certificate.pdf",
       },
       {
         referenceId: monitor.id,
         documentType: "PI_INSURANCE",
-        s3Url: "/uploads/pi-insurance-sample.pdf",
+        s3Url: "/demo/pi-insurance-sample.pdf",
         fileName: "Professional Indemnity Cover Note.pdf",
       },
     ],
@@ -120,7 +120,7 @@ async function main() {
       balance: 225000000.0,
     },
   });
-  const executionAcct = await prisma.bankAccount.create({
+  await prisma.bankAccount.create({
     data: {
       projectId: project.id,
       type: AccountType.PROJECT_EXECUTION_ACCT,
@@ -162,7 +162,7 @@ async function main() {
       appointedById: fiduExec.id,
       eligibilityCriteriaMet: true,
       independenceDeclarationSigned: true,
-      declarationDocUrl: "/uploads/monitor-declaration-sample.pdf",
+      declarationDocUrl: "/demo/monitor-declaration-sample.pdf",
     },
   });
 

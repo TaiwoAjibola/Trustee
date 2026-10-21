@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils";
 import { getSlaStatus } from "@/lib/slaEngine";
-import { Clock } from "lucide-react";
+import { Clock, Circle } from "lucide-react";
+import { milestoneStatusLabel, paymentStatusLabel } from "@/lib/labels";
 
-export function SlaBadge({ deadline }: { deadline: Date }) {
+export function SlaBadge({ deadline }: { deadline: Date | string }) {
   const sla = getSlaStatus(deadline);
   return (
     <span
@@ -39,6 +40,44 @@ export function StatusBadge({ status }: { status: string }) {
       )}
     >
       {status.replace(/_/g, " ")}
+    </span>
+  );
+}
+
+const MILESTONE_STYLES: Record<string, string> = {
+  SUBMITTED: "bg-slate-500/10 text-slate-600 border-slate-500/20",
+  DEFICIENT: "bg-rose-500/10 text-rose-600 border-rose-500/20",
+  CERTIFIED_BY_MONITOR: "bg-violet-500/10 text-violet-700 border-violet-500/25",
+  APPROVED: "bg-sky-500/10 text-sky-700 border-sky-500/25",
+  PAID: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+  REJECTED: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
+};
+
+export function MilestoneStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border",
+        MILESTONE_STYLES[status] ?? "bg-slate-100 text-slate-700 border-slate-200"
+      )}
+    >
+      <Circle className="w-2 h-2 fill-current" />
+      {milestoneStatusLabel(status)}
+    </span>
+  );
+}
+
+export function InvestorPaymentBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-2 py-1 rounded-md text-[10px] uppercase tracking-wider font-semibold border",
+        status === "ACKNOWLEDGED"
+          ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+          : "bg-amber-500/10 text-amber-700 border-amber-500/20"
+      )}
+    >
+      {paymentStatusLabel(status)}
     </span>
   );
 }

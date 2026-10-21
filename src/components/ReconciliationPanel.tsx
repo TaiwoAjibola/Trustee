@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatNaira } from "@/lib/utils";
-import { CashTxnDirection } from "@prisma/client";
+import { AccountType, CashTxnDirection } from "@prisma/client";
 import { Scale } from "lucide-react";
 
 export async function ReconciliationPanel({ projectId }: { projectId: string }) {
@@ -12,6 +12,15 @@ export async function ReconciliationPanel({ projectId }: { projectId: string }) 
       include: { conditionPrecedent: true },
     }),
   ]);
+
+  const accountLabel = (type: string) =>
+    type === AccountType.PROJECT_INVESTMENT_ACCT
+      ? "Project Investment Account"
+      : type === AccountType.ASSET_PURCHASE_ACCT
+        ? "Asset Purchase Account"
+        : type === AccountType.PROJECT_EXECUTION_ACCT
+          ? "Project Execution Account"
+          : type.replace(/_/g, " ");
 
   const rows = accounts.map((acct) => {
     const acctTxns = txns.filter((t) => t.bankAccountId === acct.id);
@@ -42,7 +51,7 @@ export async function ReconciliationPanel({ projectId }: { projectId: string }) 
       <div className="flex items-center justify-between">
         <h2 className="text-md font-bold text-slate-900 flex items-center">
           <Scale className="w-5 h-5 text-sky-600 mr-2" />
-          Trustee ↔ Bank Reconciliation
+          Match bank transactions
         </h2>
         <span
           className={`text-xs font-semibold px-2.5 py-1 rounded-md ${
@@ -51,7 +60,7 @@ export async function ReconciliationPanel({ projectId }: { projectId: string }) 
               : "bg-rose-500/10 text-rose-600 border border-rose-500/20"
           }`}
         >
-          {allReconciled ? "Reconciled" : "Reconciliation Required"}
+          {allReconciled ? "Matched" : "Needs review"}
         </span>
       </div>
 
@@ -59,16 +68,16 @@ export async function ReconciliationPanel({ projectId }: { projectId: string }) 
         <table className="w-full text-left text-sm">
           <thead className="text-xs uppercase text-slate-500 border-b border-slate-200">
             <tr>
-              <th className="px-3 py-2">Trust Account</th>
-              <th className="px-3 py-2">Bank Balance</th>
-              <th className="px-3 py-2">Ledger Net</th>
-              <th className="px-3 py-2">Discrepancy</th>
+              <th className="px-3 py-2">Account</th>
+              <th className="px-3 py-2">Bank balance</th>
+              <th className="px-3 py-2">Recorded net</th>
+              <th className="px-3 py-2">Difference</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {rows.map((r) => (
               <tr key={r.id}>
-                <td className="px-3 py-2 text-slate-700">{r.type}</td>
+                <td className="px-3 py-2 text-slate-700">{accountLabel(r.type)}</td>
                 <td className="px-3 py-2 font-mono text-slate-900">{formatNaira(r.bankBalance)}</td>
                 <td className="px-3 py-2 font-mono text-slate-900">{formatNaira(r.ledgerNet)}</td>
                 <td
@@ -76,7 +85,7 @@ export async function ReconciliationPanel({ projectId }: { projectId: string }) 
                     r.reconciled ? "text-emerald-600" : "text-rose-600"
                   }`}
                 >
-                  {r.reconciled ? "✓ 0.00" : formatNaira(r.discrepancy)}
+                  {r.reconciled ? "✓ none" : formatNaira(r.discrepancy)}
                 </td>
               </tr>
             ))}
