@@ -14,6 +14,7 @@ import { SubmitDrawdownForm } from "@/components/SubmitDrawdownForm";
 import { ConditionPrecedentPanel } from "@/components/ConditionPrecedentPanel";
 import { AuditLogTimeline } from "@/components/AuditLogTimeline";
 import { MonitorAppointmentPanel } from "@/components/MonitorAppointmentPanel";
+import { mergeOverlayUsersIntoStore } from "@/lib/userOverlay";
 import { ReconciliationPanel } from "@/components/ReconciliationPanel";
 import { RecordInflowForm } from "@/components/RecordInflowForm";
 import { VacateLienButton, ExecuteDistributionButton } from "@/components/ProjectLifecycleActions";
@@ -47,6 +48,8 @@ export default async function ProjectLedgerPage({
   const role =
     (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
   const isFiduciary = role === Role.FIDUCIARY_EXEC;
+
+  await mergeOverlayUsersIntoStore();
 
   const [projectMonitors, monitorUsers, monitorAssignments, notifications] = await Promise.all([
     prisma.projectMonitor.findMany({

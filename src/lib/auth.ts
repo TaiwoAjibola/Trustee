@@ -1,15 +1,13 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { Role } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { mergeOverlayUsersIntoStore } from "@/lib/userOverlay";
 
 // Demo/prototype: authentication is validated against the in-memory mock users
-// defined in lib/prisma.ts (this is a "dummy data" design showcase, not a real
-// credential store). Passwords are not checked for the MVP seed accounts.
-const DEMO_USERS = [
-  { id: "user_fidu", name: "Adewale Fiduciary Lead", email: "fiduciary@firsttrustees.com", role: Role.FIDUCIARY_EXEC },
-  { id: "user_mon", name: "Engr. Kabir (Independent Monitor)", email: "monitor@tech-cert.org", role: Role.INDEPENDENT_MONITOR },
-];
-
+// defined/seeded in lib/prisma.ts (a "dummy data" design showcase, not a real
+// credential store). Sourcing from the store means team members created through
+// User Management can authenticate. Passwords are not checked in this MVP.
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
@@ -22,10 +20,11 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email) return null;
-        const user = DEMO_USERS.find(
-          (u) => u.email.toLowerCase() === credentials.email.toLowerCase(),
-        );
-        if (!user) return null;
+        await mergeOverlayUsersIntoStore();
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email.trim().toLowerCase() },
+        });
+        if (!user || !user.isActive) return null;
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),

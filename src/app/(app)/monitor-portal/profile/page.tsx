@@ -6,6 +6,7 @@ import { SignDeclarationButton } from "@/components/SignDeclarationButton";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { DocumentType } from "@prisma/client";
+import { mergeOverlayUsersIntoStore } from "@/lib/userOverlay";
 import { BadgeCheck, FileText, IdCard, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 
 
@@ -20,6 +21,8 @@ export default async function MonitorProfilePage() {
   const session = await getServerSession(authOptions);
   const me = session?.user as unknown as { id: string; name?: string; email?: string } | undefined;
   const meId = me?.id ?? "";
+
+  await mergeOverlayUsersIntoStore();
 
   const [credential, docs, appointments] = await Promise.all([
     prisma.monitorCredential.findUnique({ where: { userId: meId } }),

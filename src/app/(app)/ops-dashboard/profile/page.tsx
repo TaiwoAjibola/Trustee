@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Role } from "@prisma/client";
+import { mergeOverlayUsersIntoStore } from "@/lib/userOverlay";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -88,6 +89,8 @@ export default async function TrusteeProfilePage() {
   } | undefined;
   const role = me?.role ?? Role.OPS_ANALYST;
   const profile = ROLE_PROFILE[role];
+
+  await mergeOverlayUsersIntoStore();
 
   const [user, logs] = await Promise.all([
     prisma.user.findUnique({ where: { id: me?.id } }),

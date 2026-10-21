@@ -28,7 +28,7 @@ const NOW = Date.now();
 const daysAgo = (d: number) => new Date(NOW - d * 86_400_000);
 const daysAhead = (d: number) => new Date(NOW + d * 86_400_000);
 
-const store: Record<string, Rec[]> = {
+const SEED_STORE: Record<string, Rec[]> = {
   user: [
     {
       id: "user_fidu",
@@ -458,6 +458,12 @@ const store: Record<string, Rec[]> = {
     },
   ],
 };
+
+const globalForStore = globalThis as unknown as {
+  __syndesisStore?: Record<string, Rec[]>;
+};
+const store: Record<string, Rec[]> =
+  globalForStore.__syndesisStore ?? (globalForStore.__syndesisStore = SEED_STORE);
 
 const RELATIONS: Record<string, Record<string, { model: string; local: string; remote: string; many: boolean }>> = {
   user: {

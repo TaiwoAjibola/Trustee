@@ -12,6 +12,7 @@ import {
   Landmark,
   Building2,
   Briefcase,
+  UserCog,
 } from "lucide-react";
 import { Role } from "@prisma/client";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -34,6 +35,12 @@ const TRUSTEE_NAV: NavItem[] = [
     match: "/portfolio",
   },
   { href: "/ops-dashboard/monitors", label: "Monitors (KYC)", icon: Users, match: "/monitors" },
+  {
+    href: "/ops-dashboard/users",
+    label: "User Management",
+    icon: UserCog,
+    match: "/ops-dashboard/users",
+  },
   { href: "/reports", label: "Reports", icon: FileBarChart, match: "/reports" },
   {
     href: "/ops-dashboard/profile",

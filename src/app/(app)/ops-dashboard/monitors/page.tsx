@@ -4,6 +4,7 @@ import { ReviewKycButton } from "@/components/ReviewKycButton";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Role, DocumentType } from "@prisma/client";
+import { mergeOverlayUsersIntoStore } from "@/lib/userOverlay";
 import { BadgeCheck, IdCard, ShieldCheck, ArrowLeft } from "lucide-react";
 
 
@@ -11,6 +12,8 @@ export default async function MonitorsDirectoryPage() {
   const session = await getServerSession(authOptions);
   const role =
     (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
+
+  await mergeOverlayUsersIntoStore();
 
   const monitors = await prisma.user.findMany({
     where: { role: Role.INDEPENDENT_MONITOR },
