@@ -70,7 +70,7 @@ export async function submitDrawdownRequest(data: {
     },
   });
 
-  revalidatePath("/ops-dashboard");
+  revalidatePath("/trustee-dashboard");
   return request;
 }
 
@@ -115,7 +115,7 @@ export async function issueDeficiencyNotice(data: {
     },
   });
 
-  revalidatePath("/ops-dashboard");
+  revalidatePath("/trustee-dashboard");
   return notice;
 }
 
@@ -162,7 +162,7 @@ export async function certifyMonitorProgress(data: {
   });
 
   revalidatePath("/monitor-portal");
-  revalidatePath("/ops-dashboard");
+  revalidatePath("/trustee-dashboard");
   return certificate;
 }
 
@@ -230,7 +230,7 @@ export async function createProject(data: {
     }),
   ]);
 
-  revalidatePath("/ops-dashboard");
+  revalidatePath("/trustee-dashboard");
   return project;
 }
 
@@ -282,60 +282,14 @@ export async function updateConditionPrecedent(data: {
     },
   });
 
-  revalidatePath("/ops-dashboard");
-  revalidatePath(`/ops-dashboard/project/${data.projectId}`);
+  revalidatePath("/trustee-dashboard");
+  revalidatePath(`/trustee-dashboard/project/${data.projectId}`);
   return cp;
 }
 
 /* ---------------------------------------------------------------------------
  * MODULE 3 — Multi-step fiduciary approval workflow (Gates G1–G11)
  * ------------------------------------------------------------------------- */
-
-export async function acknowledgeDrawdown(drawdownRequestId: string) {
-  const actor = await currentActor();
-  const request = await prisma.drawdownRequest.update({
-    where: { id: drawdownRequestId },
-    data: { status: DrawdownStatus.ACKNOWLEDGED },
-  });
-  await prisma.auditLog.create({
-    data: {
-      projectId: request.projectId,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "DRAWDOWN_ACKNOWLEDGED",
-      details: "Ops Analyst acknowledged KYC & invoice verification.",
-    },
-  });
-  revalidatePath("/ops-dashboard");
-}
-
-export async function recommendDrawdown(drawdownRequestId: string) {
-  const actor = await currentActor();
-  const request = await prisma.drawdownRequest.findUnique({
-    where: { id: drawdownRequestId },
-    include: { monitorCertificates: true },
-  });
-  if (!request) throw new Error("Drawdown request not found.");
-  if (request.monitorCertificates.length === 0) {
-    throw new Error(
-      "CONTROL GATE: Independent Monitor technical certification is mandatory before any drawdown can be recommended for disbursement."
-    );
-  }
-  const updated = await prisma.drawdownRequest.update({
-    where: { id: drawdownRequestId },
-    data: { status: DrawdownStatus.APPROVED },
-  });
-  await prisma.auditLog.create({
-    data: {
-      projectId: updated.projectId,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "DRAWDOWN_RECOMMENDED",
-      details: "Ops Lead verified Independent Monitor certificate and recommended disbursement.",
-    },
-  });
-  revalidatePath("/ops-dashboard");
-}
 
 export async function approveAndPayDrawdown(drawdownRequestId: string) {
   const actor = await currentActor();
@@ -433,12 +387,12 @@ export async function approveAndPayDrawdown(drawdownRequestId: string) {
       actorId: actor.id,
       actorName: actor.name,
       action: "DRAWDOWN_PAID",
-      details: `Fiduciary Exec approved final payment of ₦${updated.requestedAmount.toLocaleString()}. Receipts issued to developer and ${investors.length} investor(s).`,
+      details: `Trustee released final payment of ₦${updated.requestedAmount.toLocaleString()}. Receipts issued to developer and ${investors.length} investor(s).`,
     },
   });
-  revalidatePath("/ops-dashboard");
-  revalidatePath(`/ops-dashboard/project/${updated.projectId}`);
-  revalidatePath("/ops-dashboard/portfolio");
+  revalidatePath("/trustee-dashboard");
+  revalidatePath(`/trustee-dashboard/project/${updated.projectId}`);
+  revalidatePath("/trustee-dashboard/portfolio");
 }
 
 export async function resolveDeficiency(drawdownRequestId: string) {
@@ -463,7 +417,7 @@ export async function resolveDeficiency(drawdownRequestId: string) {
       details: `${notice.count} deficiency notice(s) resolved — drawdown returned to SUBMITTED for re-evaluation.`,
     },
   });
-  revalidatePath("/ops-dashboard");
+  revalidatePath("/trustee-dashboard");
 }
 
 /* ---------------------------------------------------------------------------
@@ -486,7 +440,7 @@ export async function uploadDocument(data: {
       fileName: data.fileName,
     },
   });
-  revalidatePath("/ops-dashboard");
+  revalidatePath("/trustee-dashboard");
   return doc;
 }
 
@@ -549,7 +503,7 @@ export async function uploadMonitorEvidence(formData: FormData) {
   }
 
   revalidatePath("/monitor-portal");
-  if (drawdownRequestId) revalidatePath(`/ops-dashboard/project/${drawdownRequestId}`);
+  if (drawdownRequestId) revalidatePath(`/trustee-dashboard/project/${drawdownRequestId}`);
   return doc;
 }
 
@@ -648,7 +602,7 @@ export async function reviewMonitorKyc(data: {
     where: { userId: data.monitorId },
     data: { kycStatus: data.status, kycNote: data.note },
   });
-  revalidatePath("/ops-dashboard/monitors");
+  revalidatePath("/trustee-dashboard/monitors");
   revalidatePath("/monitor-portal/profile");
   return cred;
 }
@@ -697,7 +651,7 @@ export async function appointMonitor(data: {
     },
   });
 
-  revalidatePath(`/ops-dashboard/project/${data.projectId}`);
+  revalidatePath(`/trustee-dashboard/project/${data.projectId}`);
   return appointment;
 }
 
@@ -729,7 +683,7 @@ export async function signIndependenceDeclaration(data: {
   });
 
   revalidatePath("/monitor-portal");
-  revalidatePath(`/ops-dashboard/project/${data.projectId}`);
+  revalidatePath(`/trustee-dashboard/project/${data.projectId}`);
   return declaration;
 }
 
@@ -751,7 +705,7 @@ export async function vacateLien(projectId: string) {
     },
   });
 
-  revalidatePath(`/ops-dashboard/project/${projectId}`);
+  revalidatePath(`/trustee-dashboard/project/${projectId}`);
   return cp;
 }
 
@@ -792,14 +746,14 @@ export async function recordInflow(data: {
     },
   });
 
-  revalidatePath(`/ops-dashboard/project/${data.projectId}`);
+  revalidatePath(`/trustee-dashboard/project/${data.projectId}`);
   return txn;
 }
 
 export async function executeInvestorDistribution(projectId: string) {
   const actor = await currentActor();
   if (actor.role !== Role.FIDUCIARY_EXEC) {
-    throw new Error("Only the Fiduciary Exec may execute investor distributions.");
+    throw new Error("Only a Trustee may execute investor distributions.");
   }
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -845,7 +799,7 @@ export async function executeInvestorDistribution(projectId: string) {
     },
   });
 
-  revalidatePath(`/ops-dashboard/project/${projectId}`);
+  revalidatePath(`/trustee-dashboard/project/${projectId}`);
   return { txn, exit };
 }
 
@@ -891,8 +845,8 @@ export async function acknowledgeInvestorPayment(investorId: string) {
     },
   });
 
-  revalidatePath("/ops-dashboard/portfolio");
-  revalidatePath(`/ops-dashboard/project/${updated.projectId}`);
+  revalidatePath("/trustee-dashboard/portfolio");
+  revalidatePath(`/trustee-dashboard/project/${updated.projectId}`);
   return updated;
 }
 
@@ -941,8 +895,8 @@ export async function initiateMonitorForDrawdown(drawdownRequestId: string, moni
     },
   });
 
-  revalidatePath("/ops-dashboard");
-  revalidatePath(`/ops-dashboard/project/${req.projectId}`);
+  revalidatePath("/trustee-dashboard");
+  revalidatePath(`/trustee-dashboard/project/${req.projectId}`);
   revalidatePath("/monitor-portal/assignments");
   return assignment;
 }
@@ -973,7 +927,7 @@ export async function confirmAndNotifyDeveloper(drawdownRequestId: string) {
         recipientType: "DEVELOPER",
         recipientRef: dev.id,
         title: "Phase Confirmed — Payment to be Released",
-        body: `First Trustees has confirmed phase ${req.gateType} (Independent Monitor verified). Disbursement will be released by the Fiduciary Exec shortly.`,
+        body: `First Trustees has confirmed phase ${req.gateType} (Independent Monitor verified). Disbursement will be released by the Trustee shortly.`,
         relatedDrawdownId: drawdownRequestId,
       },
     });
@@ -990,8 +944,61 @@ export async function confirmAndNotifyDeveloper(drawdownRequestId: string) {
     },
   });
 
-  revalidatePath("/ops-dashboard");
-  revalidatePath(`/ops-dashboard/project/${updated.projectId}`);
+  revalidatePath("/trustee-dashboard");
+  revalidatePath(`/trustee-dashboard/project/${updated.projectId}`);
+  return updated;
+}
+
+export async function rejectMilestone(drawdownRequestId: string, reason: string) {
+  const actor = await currentActor();
+  if (actor.role !== Role.FIDUCIARY_EXEC) {
+    throw new Error("Only a Trustee may reject a milestone.");
+  }
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 5) {
+    throw new Error("Provide a reason (at least 5 characters) for rejecting this milestone.");
+  }
+
+  const request = await prisma.drawdownRequest.findUnique({
+    where: { id: drawdownRequestId },
+  });
+  if (!request) throw new Error("Drawdown request not found.");
+  if (request.status === DrawdownStatus.PAID) {
+    throw new Error("This milestone has already been paid and cannot be rejected.");
+  }
+
+  const updated = await prisma.drawdownRequest.update({
+    where: { id: drawdownRequestId },
+    data: { status: DrawdownStatus.REJECTED },
+  });
+
+  const dev = await prisma.developer.findFirst({ where: { projectId: updated.projectId } });
+  if (dev) {
+    await prisma.notification.create({
+      data: {
+        projectId: updated.projectId,
+        recipientType: "DEVELOPER",
+        recipientRef: dev.id,
+        title: "Milestone Funding Rejected",
+        body: `The Trustee rejected the funding request for ${request.gateType}. Reason: ${cleanReason}`,
+        relatedDrawdownId: request.id,
+      },
+    });
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      projectId: updated.projectId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "MILESTONE_REJECTED",
+      details: `Milestone ${request.gateType} rejected: ${cleanReason}`,
+      timestamp: new Date(),
+    },
+  });
+
+  revalidatePath("/trustee-dashboard");
+  revalidatePath(`/trustee-dashboard/project/${updated.projectId}`);
   return updated;
 }
 

@@ -4,9 +4,7 @@ import { SignOutButton } from "@/components/SignOutButton";
 import { Role } from "@prisma/client";
 
 const ROLE_LABELS: Record<Role, string> = {
-  OPS_ANALYST: "Ops Analyst",
-  OPS_LEAD: "Ops Lead",
-  FIDUCIARY_EXEC: "Fiduciary Exec",
+  FIDUCIARY_EXEC: "Trustee",
   INDEPENDENT_MONITOR: "Independent Monitor",
 };
 

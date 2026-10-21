@@ -23,7 +23,6 @@ export function SlaBadge({ deadline }: { deadline: Date }) {
 
 const STATUS_STYLES: Record<string, string> = {
   SUBMITTED: "bg-slate-700/50 text-slate-700 border-slate-600/40",
-  ACKNOWLEDGED: "bg-sky-500/10 text-sky-600 border-sky-500/20",
   DEFICIENT: "bg-rose-500/10 text-rose-600 border-rose-500/20",
   CERTIFIED_BY_MONITOR: "bg-violet-500/10 text-violet-600 border-violet-500/20",
   APPROVED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",

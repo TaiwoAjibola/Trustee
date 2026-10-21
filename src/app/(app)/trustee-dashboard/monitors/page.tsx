@@ -11,7 +11,7 @@ import { BadgeCheck, IdCard, ShieldCheck, ArrowLeft } from "lucide-react";
 export default async function MonitorsDirectoryPage() {
   const session = await getServerSession(authOptions);
   const role =
-    (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
+    (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.FIDUCIARY_EXEC;
 
   await mergeOverlayUsersIntoStore();
 
@@ -39,10 +39,10 @@ export default async function MonitorsDirectoryPage() {
     <div className="space-y-8">
       <div className="border-b border-slate-200 pb-5">
         <a
-          href="/ops-dashboard"
+          href="/trustee-dashboard"
           className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-sky-600 mb-2"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Ops Dashboard
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Trustee Dashboard
         </a>
         <h1 className="text-2xl font-bold text-slate-900">Independent Monitor Registry</h1>
         <p className="text-sm text-slate-500">

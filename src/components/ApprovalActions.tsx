@@ -3,11 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Role, DrawdownStatus } from "@prisma/client";
-import {
-  acknowledgeDrawdown,
-  approveAndPayDrawdown,
-  resolveDeficiency,
-} from "@/actions/fiduciaryActions";
+import { approveAndPayDrawdown, resolveDeficiency } from "@/actions/fiduciaryActions";
 
 export function ApprovalActions({
   drawdownRequestId,
@@ -34,30 +30,18 @@ export function ApprovalActions({
     });
   };
 
-  const isTrustee =
-    role === Role.OPS_ANALYST ||
-    role === Role.OPS_LEAD ||
-    role === Role.FIDUCIARY_EXEC;
+  const isTrustee = role === Role.FIDUCIARY_EXEC;
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
-        {status === DrawdownStatus.SUBMITTED && isTrustee && (
-          <button
-            onClick={() => run(() => acknowledgeDrawdown(drawdownRequestId))}
-            disabled={pending}
-            className="text-xs px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold disabled:opacity-60"
-          >
-            Acknowledge (Ops)
-          </button>
-        )}
-        {status === DrawdownStatus.APPROVED && role === Role.FIDUCIARY_EXEC && (
+        {status === DrawdownStatus.APPROVED && isTrustee && (
           <button
             onClick={() => run(() => approveAndPayDrawdown(drawdownRequestId))}
             disabled={pending}
             className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-60"
           >
-            Approve & Pay (Fiduciary Exec)
+            Release Funds
           </button>
         )}
         {status === DrawdownStatus.DEFICIENT && isTrustee && (
@@ -66,7 +50,7 @@ export function ApprovalActions({
             disabled={pending}
             className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold disabled:opacity-60"
           >
-            Mark Resolved & Reopen
+            Mark Resolved &amp; Reopen
           </button>
         )}
       </div>

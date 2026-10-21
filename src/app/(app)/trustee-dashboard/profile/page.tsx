@@ -18,61 +18,29 @@ const ROLE_PROFILE: Record<
   Role,
   { title: string; mandate: string; capabilities: Capability[] }
 > = {
-  OPS_ANALYST: {
-    title: "Operations Analyst",
-    mandate:
-      "Front-line fiduciary operations. Initiates drawdown requests, acknowledges submissions, manages deficiencies, and onboards projects and monitors. Holds no disbursement authority.",
-    capabilities: [
-      { label: "Submit drawdown requests (Gates G1–G11)", ok: true },
-      { label: "Acknowledge submitted requests", ok: true },
-      { label: "Raise & resolve deficiencies", ok: true },
-      { label: "Onboard projects & appoint monitors (Gate G0)", ok: true },
-      { label: "Record trust-account inflows", ok: true },
-      { label: "Verify & recommend release (Ops Lead)", ok: false },
-      { label: "Approve & pay (Fiduciary Exec)", ok: false },
-      { label: "Execute investor distribution (G10)", ok: false },
-    ],
-  },
-  OPS_LEAD: {
-    title: "Operations Lead",
-    mandate:
-      "Verification and recommendation layer. Confirms each request is complete and compliant, then recommends release — triggering the internal Investment→Execution transfer. Cannot release funds.",
-    capabilities: [
-      { label: "Submit drawdown requests (Gates G1–G11)", ok: true },
-      { label: "Acknowledge submitted requests", ok: true },
-      { label: "Raise & resolve deficiencies", ok: true },
-      { label: "Onboard projects & appoint monitors (Gate G0)", ok: true },
-      { label: "Record trust-account inflows", ok: true },
-      { label: "Verify & recommend release (internal transfer)", ok: true },
-      { label: "Approve & pay (Fiduciary Exec)", ok: false },
-      { label: "Execute investor distribution (G10)", ok: false },
-    ],
-  },
   FIDUCIARY_EXEC: {
-    title: "Fiduciary Executive",
+    title: "Trustee",
     mandate:
-      "Sole cash-control authority. The only role permitted to release funds from the trust (and only once the Independent Monitor has certified the milestone), vacate the registered lien, and execute the G10 investor distribution at the 24% p.a. waterfall.",
+      "Responsible for the fiduciary control of investor funds. Reviews the Independent Monitor's evidence at each milestone, approves or rejects the funding request, and releases funds only after verification. Also appoints monitors and executes the G10 investor distribution at the 24% p.a. waterfall.",
     capabilities: [
+      { label: "Onboard projects & record investor inflows", ok: true },
+      { label: "Appoint Independent Monitors to projects", ok: true },
+      { label: "Review monitor evidence & milestone reports", ok: true },
+      { label: "Approve or reject milestone funding", ok: true },
+      { label: "Request additional information (deficiency)", ok: true },
+      { label: "Release funds after approval", ok: true },
       { label: "Submit drawdown requests (Gates G1–G11)", ok: true },
-      { label: "Acknowledge submitted requests", ok: true },
-      { label: "Raise & resolve deficiencies", ok: true },
-      { label: "Onboard projects & appoint monitors (Gate G0)", ok: true },
-      { label: "Record trust-account inflows", ok: true },
-      { label: "Verify & recommend release (internal transfer)", ok: true },
-      {
-        label: "Approve & pay (gated on Independent Monitor certificate)",
-        ok: true,
-      },
       { label: "Vacate lien & execute investor distribution (G10, 24% p.a.)", ok: true },
     ],
   },
   INDEPENDENT_MONITOR: {
     title: "Independent Monitor",
     mandate:
-      "Technical verifier appointed per project. Certifies physical milestones and maintains professional standing — not part of the trustee cash-control chain.",
+      "Technical verifier appointed per project. Inspects the site, submits photographic evidence and inspection reports for each milestone, and maintains professional standing — independent of the trustee funding decision.",
     capabilities: [
-      { label: "Certify physical milestones", ok: true },
-      { label: "Upload milestone evidence (image / video)", ok: true },
+      { label: "Inspect site & verify physical progress", ok: true },
+      { label: "Submit milestone evidence (image / video)", ok: true },
+      { label: "Submit inspection findings & reports", ok: true },
       { label: "Maintain professional credential & KYC", ok: true },
       { label: "Sign independence declaration per project", ok: true },
     ],
@@ -87,7 +55,7 @@ export default async function TrusteeProfilePage() {
     email?: string;
     role?: Role;
   } | undefined;
-  const role = me?.role ?? Role.OPS_ANALYST;
+  const role = me?.role ?? Role.FIDUCIARY_EXEC;
   const profile = ROLE_PROFILE[role];
 
   await mergeOverlayUsersIntoStore();

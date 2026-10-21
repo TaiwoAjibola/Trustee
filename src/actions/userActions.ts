@@ -101,8 +101,8 @@ export async function createUser(data: {
     ...(isMonitor ? { professionalBody, registrationNumber } : {}),
   });
 
-  revalidatePath("/ops-dashboard/users");
-  revalidatePath("/ops-dashboard/monitors");
+  revalidatePath("/trustee-dashboard/users");
+  revalidatePath("/trustee-dashboard/monitors");
   return user;
 }
 
@@ -131,7 +131,7 @@ export async function setUserActive(userId: string, isActive: boolean) {
     registrationNumber: existingOverlay?.registrationNumber,
   });
 
-  revalidatePath("/ops-dashboard/users");
-  revalidatePath("/ops-dashboard/monitors");
+  revalidatePath("/trustee-dashboard/users");
+  revalidatePath("/trustee-dashboard/monitors");
   return user;
 }

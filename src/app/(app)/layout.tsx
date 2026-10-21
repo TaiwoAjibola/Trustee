@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
   await mergeOverlayUsersIntoStore();
-  const role = (session.user as unknown as { role?: Role }).role ?? Role.OPS_ANALYST;
+  const role = (session.user as unknown as { role?: Role }).role ?? Role.FIDUCIARY_EXEC;
   const user: AppUser = {
     name: session.user.name ?? "User",
     email: session.user.email,

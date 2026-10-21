@@ -3,6 +3,7 @@ import { GATE_LABELS } from "@/lib/slaEngine";
 import { ApprovalActions } from "@/components/ApprovalActions";
 import { MonitorInitiator } from "@/components/MonitorInitiator";
 import { ConfirmDeveloperButton } from "@/components/ConfirmDeveloperButton";
+import { RejectMilestoneDialog } from "@/components/RejectMilestoneDialog";
 
 export function TrusteeWorkflowStepper({
   request,
@@ -31,15 +32,14 @@ export function TrusteeWorkflowStepper({
 
   const steps = [
     { n: 1, label: "Fund Request (Developer)", done: true },
-    { n: 2, label: "Trustee Acknowledge", done: status !== DrawdownStatus.SUBMITTED },
-    { n: 3, label: "Initiate Monitor", done: initiated },
-    { n: 4, label: "Monitor Confirms Phase", done: certified },
+    { n: 2, label: "Initiate Monitor", done: initiated },
+    { n: 3, label: "Monitor Verifies & Submits Evidence", done: certified },
     {
-      n: 5,
-      label: "Trustee Confirms → Developer",
+      n: 4,
+      label: "Trustee Reviews & Approves",
       done: status === DrawdownStatus.APPROVED || status === DrawdownStatus.PAID,
     },
-    { n: 6, label: "Pay + Receipts", done: status === DrawdownStatus.PAID },
+    { n: 5, label: "Funds Released + Receipts", done: status === DrawdownStatus.PAID },
   ];
 
   let currentSet = false;
@@ -96,11 +96,17 @@ export function TrusteeWorkflowStepper({
           initiated={initiated}
           monitorName={monitorName}
         />
-        <ConfirmDeveloperButton
-          drawdownRequestId={request.id}
-          certified={certified}
-          alreadyActioned={status === DrawdownStatus.APPROVED || status === DrawdownStatus.PAID}
-        />
+        {status !== DrawdownStatus.REJECTED && (
+          <ConfirmDeveloperButton
+            drawdownRequestId={request.id}
+            certified={certified}
+            alreadyActioned={status === DrawdownStatus.APPROVED || status === DrawdownStatus.PAID}
+          />
+        )}
+        {(status === DrawdownStatus.SUBMITTED ||
+          status === DrawdownStatus.CERTIFIED_BY_MONITOR) && (
+          <RejectMilestoneDialog drawdownRequestId={request.id} />
+        )}
       </div>
     </div>
   );

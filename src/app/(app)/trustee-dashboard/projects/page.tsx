@@ -8,7 +8,7 @@ import Link from "next/link";
 
 export default async function ProjectsPage() {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
+  const role = (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.FIDUCIARY_EXEC;
 
   const projects = await prisma.project.findMany({
     include: { bankAccounts: true, drawdownRequests: true },
@@ -35,7 +35,7 @@ export default async function ProjectsPage() {
             return (
               <Link
                 key={p.id}
-                href={`/ops-dashboard/project/${p.id}`}
+                href={`/trustee-dashboard/project/${p.id}`}
                 className="bg-white border border-slate-200 rounded-xl p-5 hover:border-sky-400 transition space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">

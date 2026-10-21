@@ -20,7 +20,7 @@ const PAYMENT_STYLES: Record<string, string> = {
 
 export default async function PortfolioPage() {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
+  const role = (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.FIDUCIARY_EXEC;
 
   const projects = await prisma.project.findMany({
     include: {

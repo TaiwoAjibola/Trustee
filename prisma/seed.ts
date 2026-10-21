@@ -26,15 +26,6 @@ async function main() {
     },
   });
 
-  await prisma.user.create({
-    data: {
-      name: "Chioma Ops Analyst",
-      email: "ops@firsttrustees.com",
-      hashedPassword: "hashed_pass",
-      role: Role.OPS_ANALYST,
-    },
-  });
-
   const monitor = await prisma.user.create({
     data: {
       name: "Engr. Kabir (Independent Monitor)",

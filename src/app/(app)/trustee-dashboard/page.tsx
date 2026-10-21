@@ -5,6 +5,8 @@ import { ArrowUpRight, PlusCircle } from "lucide-react";
 import { SlaBadge, StatusBadge } from "@/components/Badges";
 import { DeficiencyDialog } from "@/components/DeficiencyDialog";
 import { ApprovalActions } from "@/components/ApprovalActions";
+import { ConfirmDeveloperButton } from "@/components/ConfirmDeveloperButton";
+import { RejectMilestoneDialog } from "@/components/RejectMilestoneDialog";
 import { MonitorInitiator } from "@/components/MonitorInitiator";
 import { CreateProjectForm } from "@/components/CreateProjectForm";
 import { getServerSession } from "next-auth";
@@ -13,9 +15,9 @@ import { Role, DrawdownStatus } from "@prisma/client";
 import { formatNaira } from "@/lib/utils";
 
 
-export default async function OpsDashboardPage() {
+export default async function TrusteeDashboardPage() {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
+  const role = (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.FIDUCIARY_EXEC;
 
   const requests = await prisma.drawdownRequest.findMany({
     include: {
@@ -45,7 +47,7 @@ export default async function OpsDashboardPage() {
           Trustee Fiduciary Control Node
         </h1>
         <p className="text-sm text-slate-500">
-          First Trustees — Operations &amp; Cash Control Dashboard
+          First Trustees — Cash Control &amp; Fiduciary Dashboard
         </p>
       </div>
 
@@ -149,14 +151,33 @@ export default async function OpsDashboardPage() {
                       monitorId={req.project.projectMonitors[0]?.monitorId ?? null}
                       initiated={!!assignmentByRequest.get(req.id)}
                     />
-                    {req.status === DrawdownStatus.SUBMITTED && (
+                    {req.status !== DrawdownStatus.REJECTED && (
+                      <ConfirmDeveloperButton
+                        drawdownRequestId={req.id}
+                        certified={[
+                          DrawdownStatus.CERTIFIED_BY_MONITOR,
+                          DrawdownStatus.APPROVED,
+                          DrawdownStatus.PAID,
+                        ].includes(req.status)}
+                        alreadyActioned={
+                          req.status === DrawdownStatus.APPROVED ||
+                          req.status === DrawdownStatus.PAID
+                        }
+                      />
+                    )}
+                    {(req.status === DrawdownStatus.SUBMITTED ||
+                      req.status === DrawdownStatus.CERTIFIED_BY_MONITOR) && (
+                      <RejectMilestoneDialog drawdownRequestId={req.id} />
+                    )}
+                    {(req.status === DrawdownStatus.SUBMITTED ||
+                      req.status === DrawdownStatus.CERTIFIED_BY_MONITOR) && (
                       <DeficiencyDialog drawdownRequestId={req.id} />
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link
                       className="inline-flex items-center text-xs font-semibold text-sky-600 hover:text-sky-700"
-                      href={`/ops-dashboard/project/${req.projectId}`}
+                      href={`/trustee-dashboard/project/${req.projectId}`}
                     >
                       Inspect Ledger <ArrowUpRight className="w-4 h-4 ml-1" />
                     </Link>

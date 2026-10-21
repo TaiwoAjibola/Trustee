@@ -16,17 +16,13 @@ import {
 } from "lucide-react";
 
 const ROLE_LABEL: Record<string, string> = {
-  FIDUCIARY_EXEC: "Trustee (Fiduciary Exec)",
+  FIDUCIARY_EXEC: "Trustee",
   INDEPENDENT_MONITOR: "Independent Monitor",
-  OPS_ANALYST: "Ops Analyst",
-  OPS_LEAD: "Ops Lead",
 };
 
 const ROLE_STYLE: Record<string, string> = {
   FIDUCIARY_EXEC: "bg-emerald-50 text-emerald-700 border-emerald-200",
   INDEPENDENT_MONITOR: "bg-violet-50 text-violet-700 border-violet-200",
-  OPS_ANALYST: "bg-slate-50 text-slate-600 border-slate-200",
-  OPS_LEAD: "bg-slate-50 text-slate-600 border-slate-200",
 };
 
 export default async function UserManagementPage() {
@@ -58,10 +54,10 @@ export default async function UserManagementPage() {
     <div className="space-y-8">
       <div className="border-b border-slate-200 pb-5">
         <a
-          href="/ops-dashboard"
+          href="/trustee-dashboard"
           className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-sky-600 mb-2"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Ops Dashboard
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Trustee Dashboard
         </a>
         <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
         <p className="text-sm text-slate-500">
@@ -128,7 +124,7 @@ export default async function UserManagementPage() {
                       <p className="text-sm font-bold text-slate-900">{u.name}</p>
                       <span
                         className={`text-[10px] uppercase tracking-wider font-semibold border rounded-full px-2 py-0.5 ${
-                          ROLE_STYLE[u.role] ?? ROLE_STYLE.OPS_ANALYST
+                          ROLE_STYLE[u.role] ?? ROLE_STYLE.FIDUCIARY_EXEC
                         }`}
                       >
                         {ROLE_LABEL[u.role] ?? u.role}
@@ -176,7 +172,7 @@ export default async function UserManagementPage() {
 
           <p className="text-xs text-slate-500">
             New monitors appear in the{" "}
-            <a href="/ops-dashboard/monitors" className="text-sky-600 hover:underline">
+            <a href="/trustee-dashboard/monitors" className="text-sky-600 hover:underline">
               Monitor Registry
             </a>{" "}
             and become selectable when appointing monitors to a project.

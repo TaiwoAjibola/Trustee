@@ -21,32 +21,32 @@ import { cn } from "@/lib/utils";
 type NavItem = { href: string; label: string; icon: React.ElementType; match?: string };
 
 const TRUSTEE_NAV: NavItem[] = [
-  { href: "/ops-dashboard", label: "Dashboard", icon: LayoutDashboard, match: "/ops-dashboard" },
+  { href: "/trustee-dashboard", label: "Dashboard", icon: LayoutDashboard, match: "/trustee-dashboard" },
   {
-    href: "/ops-dashboard/projects",
+    href: "/trustee-dashboard/projects",
     label: "Projects",
     icon: Building2,
-    match: "/ops-dashboard/projects",
+    match: "/trustee-dashboard/projects",
   },
   {
-    href: "/ops-dashboard/portfolio",
+    href: "/trustee-dashboard/portfolio",
     label: "Portfolio & Investors",
     icon: Briefcase,
     match: "/portfolio",
   },
-  { href: "/ops-dashboard/monitors", label: "Monitors (KYC)", icon: Users, match: "/monitors" },
+  { href: "/trustee-dashboard/monitors", label: "Monitors (KYC)", icon: Users, match: "/monitors" },
   {
-    href: "/ops-dashboard/users",
+    href: "/trustee-dashboard/users",
     label: "User Management",
     icon: UserCog,
-    match: "/ops-dashboard/users",
+    match: "/trustee-dashboard/users",
   },
   { href: "/reports", label: "Reports", icon: FileBarChart, match: "/reports" },
   {
-    href: "/ops-dashboard/profile",
+    href: "/trustee-dashboard/profile",
     label: "Profile",
     icon: UserCircle,
-    match: "/ops-dashboard/profile",
+    match: "/trustee-dashboard/profile",
   },
 ];
 
@@ -62,9 +62,7 @@ const MONITOR_NAV: NavItem[] = [
 ];
 
 const ROLE_LABELS: Record<Role, string> = {
-  OPS_ANALYST: "Ops Analyst",
-  OPS_LEAD: "Ops Lead",
-  FIDUCIARY_EXEC: "Fiduciary Exec",
+  FIDUCIARY_EXEC: "Trustee",
   INDEPENDENT_MONITOR: "Independent Monitor",
 };
 

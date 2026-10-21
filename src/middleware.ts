@@ -7,7 +7,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith("/login")) {
-    if (token) return NextResponse.redirect(new URL("/ops-dashboard", req.url));
+    if (token) return NextResponse.redirect(new URL("/trustee-dashboard", req.url));
     return NextResponse.next();
   }
 
@@ -18,10 +18,10 @@ export async function middleware(req: NextRequest) {
   const role = token.role as string;
 
   if (pathname.startsWith("/monitor-portal") && role !== "INDEPENDENT_MONITOR") {
-    return NextResponse.redirect(new URL("/ops-dashboard", req.url));
+    return NextResponse.redirect(new URL("/trustee-dashboard", req.url));
   }
 
-  if (pathname.startsWith("/ops-dashboard") && role === "INDEPENDENT_MONITOR") {
+  if (pathname.startsWith("/trustee-dashboard") && role === "INDEPENDENT_MONITOR") {
     return NextResponse.redirect(new URL("/monitor-portal", req.url));
   }
 
@@ -29,5 +29,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/ops-dashboard/:path*", "/monitor-portal/:path*", "/login"],
+  matcher: ["/trustee-dashboard/:path*", "/monitor-portal/:path*", "/login"],
 };

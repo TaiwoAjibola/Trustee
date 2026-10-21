@@ -46,7 +46,7 @@ export default async function ProjectLedgerPage({
 
   const session = await getServerSession(authOptions);
   const role =
-    (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.OPS_ANALYST;
+    (session?.user as unknown as { role?: Role } | undefined)?.role ?? Role.FIDUCIARY_EXEC;
   const isFiduciary = role === Role.FIDUCIARY_EXEC;
 
   await mergeOverlayUsersIntoStore();
@@ -102,10 +102,10 @@ export default async function ProjectLedgerPage({
       {/* Header */}
       <div className="border-b border-slate-200 pb-5">
         <a
-          href="/ops-dashboard"
+          href="/trustee-dashboard"
           className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-sky-600 mb-2"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Ops Dashboard
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Trustee Dashboard
         </a>
         <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
         <p className="text-sm text-slate-500">
@@ -317,7 +317,7 @@ export default async function ProjectLedgerPage({
         </div>
       </div>
 
-      {/* Exit & Investor Distribution (Fiduciary Exec) */}
+      {/* Exit & Investor Distribution (Trustee) */}
       {isFiduciary && (
         <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-3">
           <h2 className="text-md font-bold text-slate-900 flex items-center">

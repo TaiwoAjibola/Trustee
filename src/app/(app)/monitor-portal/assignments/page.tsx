@@ -22,7 +22,7 @@ export default async function MonitorAssignmentsPage() {
   const requests = await prisma.drawdownRequest.findMany({
     where: {
       projectId: { in: appointedProjectIds },
-      status: { in: [DrawdownStatus.SUBMITTED, DrawdownStatus.ACKNOWLEDGED, DrawdownStatus.DEFICIENT] },
+      status: { in: [DrawdownStatus.SUBMITTED, DrawdownStatus.DEFICIENT] },
     },
     include: {
       project: true,

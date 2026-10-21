@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { ShieldCheck, Loader2 } from "lucide-react";
 
 const SEED_USERS = [
-  { label: "Fiduciary Exec", email: "fiduciary@firsttrustees.com" },
+  { label: "Trustee", email: "fiduciary@firsttrustees.com" },
   { label: "Independent Monitor", email: "monitor@tech-cert.org" },
 ];
 
@@ -22,7 +22,7 @@ export function LoginForm() {
     const res = await signIn("credentials", {
       email,
       password,
-      callbackUrl: "/ops-dashboard",
+      callbackUrl: "/trustee-dashboard",
     });
     setLoading(false);
     if (res?.error) {

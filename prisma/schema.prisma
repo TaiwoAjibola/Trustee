@@ -8,8 +8,6 @@ datasource db {
 }
 
 enum Role {
-  OPS_ANALYST
-  OPS_LEAD
   FIDUCIARY_EXEC
   INDEPENDENT_MONITOR
 }
@@ -39,7 +37,6 @@ enum GateType {
 
 enum DrawdownStatus {
   SUBMITTED
-  ACKNOWLEDGED
   DEFICIENT
   CERTIFIED_BY_MONITOR
   APPROVED

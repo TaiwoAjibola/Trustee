@@ -20,8 +20,8 @@ export function ConfirmDeveloperButton({
 
   if (alreadyActioned) {
     return (
-      <span className="inline-flex items-center text-xs font-semibold text-sky-600">
-        Feedback sent to developer
+      <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
+        Milestone approved
       </span>
     );
   }
@@ -41,14 +41,14 @@ export function ConfirmDeveloperButton({
           });
         }}
         disabled={pending || !certified}
-        title={!certified ? "Independent Monitor must confirm the phase first" : undefined}
+        title={!certified ? "Independent Monitor must verify and submit evidence first" : undefined}
         className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold disabled:opacity-50"
       >
         {pending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-        Confirm &amp; Notify Developer
+        Approve Milestone
       </button>
       {!certified && (
-        <span className="text-[11px] text-slate-400">Awaiting monitor confirmation</span>
+        <span className="text-[11px] text-slate-400">Awaiting monitor verification</span>
       )}
       {error && <span className="text-xs text-rose-600">{error}</span>}
     </div>

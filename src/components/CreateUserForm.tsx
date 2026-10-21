@@ -101,7 +101,7 @@ export function CreateUserForm() {
           onChange={(e) => setRole(e.target.value as Role)}
           className={fieldClass}
         >
-          <option value={Role.FIDUCIARY_EXEC}>Trustee (Fiduciary Exec)</option>
+          <option value={Role.FIDUCIARY_EXEC}>Trustee</option>
           <option value={Role.INDEPENDENT_MONITOR}>Independent Monitor</option>
         </select>
       </div>
